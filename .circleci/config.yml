@@ -14,13 +14,13 @@ jobs:
           name: Install dependencies
           command: |
             apt-get update
-            apt-get install -y bash curl build-essential git cmake pkg-config \
+            apt-get install -y bash curl nodejs npm build-essential git cmake pkg-config \
               libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev \
               libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev \
               libluabind-dev libluabind0.9.1v5
-#      - run:
-#          name: Run tests
-#          command: ./run_tests.sh
+      - run:
+          name: Run tests
+          command: ./run_tests.sh
       - deploy:
           name: Push application Docker image
           command: ./circleci_build.sh

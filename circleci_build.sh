@@ -10,9 +10,7 @@ if [ -z ${GEMFURY_TOKEN} ]; then
     exit -1
 fi
 
-
-
-if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
+if [ "${CIRCLE_BRANCH}" ==  "${CIRCLE_BRANCH}" ]; then
     mkdir -p build
     cd build
     cmake ..
@@ -20,4 +18,6 @@ if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
     -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME}
 
     curl -F package=@./${PACKAGE_FILE_NAME}.deb https://${GEMFURY_TOKEN}@push.fury.io/webgeoservices/
+else
+    echo "Banch is not master."
 fi
