@@ -7,19 +7,25 @@ if [ -z ${GEMFURY_TOKEN} ]; then
     exit -1
 fi
 
-echo current tag ${CIRCLE_TAG}
+echo current tag ${CIRCLE_TAG} tag
+echo current tag ${CIRCLE_BRANCH} branch
 
-if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
-    eval "$(aws ecr get-login --no-include-email --region us-east-1)"
-    docker build -t ${ECR_REPOSITORY}:master .
-    docker push ${ECR_REPOSITORY}:master
-    curl -X POST http://stage-manager.woosmap.com:8080/hooks/deploy_stage
-elif [ "${CIRCLE_BRANCH}" ==  "develop" ]; then
-    eval "$(aws ecr get-login --no-include-email --region us-east-1)"
-    docker build -t ${ECR_REPOSITORY}:develop .
-    docker push ${ECR_REPOSITORY}:develop
-    curl -X POST http://stage-manager.woosmap.com:8080/hooks/deploy_develop
+if [ -z ${CIRCLE_TAG} ]; then
+    echo "Tag is present."
+
 fi
+
+#if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
+#    eval "$(aws ecr get-login --no-include-email --region us-east-1)"
+#    docker build -t ${ECR_REPOSITORY}:master .
+#    docker push ${ECR_REPOSITORY}:master
+#    curl -X POST http://stage-manager.woosmap.com:8080/hooks/deploy_stage
+#elif [ "${CIRCLE_BRANCH}" ==  "develop" ]; then
+#    eval "$(aws ecr get-login --no-include-email --region us-east-1)"
+#    docker build -t ${ECR_REPOSITORY}:develop .
+#    docker push ${ECR_REPOSITORY}:develop
+#    curl -X POST http://stage-manager.woosmap.com:8080/hooks/deploy_develop
+#fi
 
 #VERSION=5.22.1
 ##BRANCH_TAG=v5.22.0-customsnapping.5
