@@ -1,0 +1,25 @@
+version: 2
+
+orbs:
+  aws-cli: circleci/aws-cli@0.1.13
+
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.8-stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get install -y bash curl build-essential git cmake pkg-config \
+              libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev \
+              libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev \
+              libluabind-dev libluabind0.9.1v5
+#      - run:
+#          name: Run tests
+#          command: ./run_tests.sh
+      - deploy:
+          name: Push application Docker image
+          command: ./circleci_build.sh
