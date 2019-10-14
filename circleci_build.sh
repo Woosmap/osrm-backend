@@ -2,7 +2,7 @@
 
 # build and push osrm lib on gemfury
 
-VERSION=5.22.1
+VERSION=5.23.0
 PACKAGE_FILE_NAME=osrm-wgs-${VERSION}
 
 if [ -z ${GEMFURY_TOKEN} ]; then
