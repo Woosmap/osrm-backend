@@ -10,7 +10,7 @@ if [ -z ${GEMFURY_TOKEN} ]; then
     exit -1
 fi
 
-if [ "${CIRCLE_BRANCH}" ==  "${CIRCLE_BRANCH}" ]; then
+if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
     mkdir -p build
     cd build
     cmake ..
