@@ -14,7 +14,7 @@ if [ "${CIRCLE_BRANCH}" ==  "master" ]; then
     mkdir -p build
     cd build
     cmake ..
-    cpack -G DEB -P osrm -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
+    cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
     -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME}
 
     curl -F package=@./${PACKAGE_FILE_NAME}.deb https://${GEMFURY_TOKEN}@push.fury.io/webgeoservices/
