@@ -23,7 +23,7 @@ jobs:
       run: |
         pwd
         ls
-        ./run_test.sh
+        ./run_tests.sh
 
     - name: Push librairie to gemfury if branch is master
       run: ./deploy.sh
