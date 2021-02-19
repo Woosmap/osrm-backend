@@ -5,21 +5,22 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Install ca-certificates and https for apt
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bash curl nodejs npm build-essential git cmake pkg-config \
+        sudo apt update
+        sudo apt install -y bash curl nodejs npm build-essential git cmake pkg-config \
           libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev \
-          libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev \
-          libluabind-dev libluabind0.9.1v5
+          libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev 
+# \
+# libluabind-dev libluabind0.9.1v5
 
-#    - name: Run OSRM tests
-#      run: sudo ./run_test.sh
+    - name: Run OSRM tests
+      run: sudo ./run_test.sh
 
     - name: Push librairie to gemfury if branch is master
       run: ./deploy.sh
