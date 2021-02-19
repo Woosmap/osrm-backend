@@ -20,7 +20,10 @@ jobs:
 # libluabind-dev libluabind0.9.1v5
 
     - name: Run OSRM tests
-      run: ./run_test.sh
+      run: |
+        pwd
+        ls
+        ./run_test.sh
 
     - name: Push librairie to gemfury if branch is master
       run: ./deploy.sh
