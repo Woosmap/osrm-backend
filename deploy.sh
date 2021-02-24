@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
+set -e
+# push osrm lib on gemfury and osrm-backend-wgs to ECR
 
-# build and push osrm lib on gemfury
+ECR_REPOSITORY=${1}
+BRANCH=${GITHUB_REF#refs/heads/}
+echo "Deploying version ${VERSION} if Master, we are ${BRANCH}"
 
 if [ -z ${GEMFURY_PUSH_TOKEN} ]; then
     echo "Missing or blank GEMFURY_PUSH_TOKEN variable."
     exit -1
+elif [ -z "${ECR_REPOSITORY}" ]; then
+    echo "Missing ECR_REPOSITORY parameter."
+    echo "usage: deploy.sh <ECR_REPOSITORY>"
+    exit 255]
 fi
 
-BRANCH=${GITHUB_REF#refs/heads/}
 if [ "${BRANCH}" ==  "master" ]; then
-    VERSION=5.23.0
+
     PACKAGE_FILE_NAME=osrm-wgs-${VERSION}
 
-    mkdir -p build
-    cd build
-    cmake ..
+    cd ./out/build
     cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
-    -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME}
+      -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME}
 
     curl -F package=@./${PACKAGE_FILE_NAME}.deb https://${GEMFURY_PUSH_TOKEN}@push.fury.io/${GEMFURY_USERNAME}/
+
+    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+    docker tag osrm-backend-wgs "${ECR_REPOSITORY}:${BRANCH}"
+    docker push "${ECR_REPOSITORY}:${BRANCH}"
 else
     echo "Branch is not master."
 fi
