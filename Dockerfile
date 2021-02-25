@@ -1,7 +1,7 @@
 FROM ubuntu:20.04 as builder
 
 ARG DEBIAN_FRONTEND="noninteractive"
-ARG VERSION="test"
+ARG VERSION="0.0.0"
 ENV TZ="Europe/Paris"
 ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
 
