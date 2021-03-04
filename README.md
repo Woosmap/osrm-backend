@@ -1,4 +1,24 @@
-## Open Source Routing Machine
+## Open Source Routing Machine With Woosmap changes...
+
+# WGS
+To build this repo locally use the Dockerfile in the root of the directory.
+```bash
+docker build . -t osrm-backend-wgs
+```
+You may need to modify your Docker Desktop settings to succeed. I found 6 CPUs and 10 GB of memory did the trick.
+
+
+In order to build this repo to get a .deb file build it slightly differently:
+```bash
+DOCKER_BUILDKIT=1 docker build . -t osrm-backend-wgs --target exporter -o ./out
+```
+Once that build has finished the osrm-wgs-0.0.0.deb will be availble in the `./out/build` folder.
+
+
+To test any changes you will need to pair this repo with [pylibosrm](https://github.com/WebGeoServices/pylibosrm) and 
+build the Dockerfile located there with the FROM part at the top pointing to your latest docker image locally.
+Or install the .deb pacakege on appropriate EC2 server in AWS.
+
 
 | Linux / macOS | Windows | Code Coverage |
 | ------------- | ------- | ------------- |
