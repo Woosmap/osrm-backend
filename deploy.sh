@@ -20,8 +20,6 @@ if [ "${BRANCH}" ==  "master" ]; then
     PACKAGE_FILE_NAME=osrm-wgs-${VERSION}
 
     cd ./out/build
-    cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
-      -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME}
 
     curl -F package=@./${PACKAGE_FILE_NAME}.deb https://${GEMFURY_PUSH_TOKEN}@push.fury.io/${GEMFURY_USERNAME}/
 
