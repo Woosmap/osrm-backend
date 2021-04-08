@@ -20,7 +20,7 @@ jobs:
         docker build . -t osrm-backend-wgs --build-arg VERSION=$VERSION
 
     - name: Push artifacts to gemfury and ECR if branch is master
-      run: ./deploy.sh 074067892588.dkr.ecr.us-east-1.amazonaws.com/woosmap/osrm-backend-wgs
+      run: ./deploy.sh public.ecr.aws/t1f4l4p3/osrm-backend-wgs
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
