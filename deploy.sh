@@ -23,7 +23,7 @@ if [ "${BRANCH}" ==  "master" ]; then
 
     curl -F package=@./${PACKAGE_FILE_NAME}.deb https://${GEMFURY_PUSH_TOKEN}@push.fury.io/${GEMFURY_USERNAME}/
 
-    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+    aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
     docker tag osrm-backend-wgs "${ECR_REPOSITORY}:${BRANCH}"
     docker push "${ECR_REPOSITORY}:${BRANCH}"
 else
