@@ -25,8 +25,6 @@ cache:
 
 env:
   global:
-   - secure: "hk+32aXXF5t1ApaM2Wjqooz3dx1si907L87WRMkO47WlpJmUUU/Ye+MJk9sViH8MdhOcceocVAmdYl5/WFWOIbDWNlBya9QvXDZyIu2KIre/0QyOCTZbrsif8paBXKIO5O/R4OTvIZ8rvWZsadBdmAT9GSbDhih6FzqXAEgeIYQ="
-   - secure: "VE+cFkseFwW4jK6XwkP0yW3h4DixPJ8+Eb3yKcchGZ5iIJxlZ/8i1vKHYxadgPRwSYwPSB14tF70xj2OmiT2keGzZUfphmPXinBaLEhYk+Bde+GZZkoSl5ND109I/LcyNr0nG9dDgtV6pkvFchgchpyP9JnVOOS0+crEZlAz0RE="
    - CCACHE_TEMPDIR=/tmp/.ccache-temp
    - CCACHE_COMPRESS=1
    - CASHER_TIME_OUT=599 # one second less than 10m to avoid 10m timeout error: https://github.com/Project-OSRM/osrm-backend/issues/2742
@@ -62,8 +60,8 @@ matrix:
         - npm ci --ignore-scripts
       script:
         - ./scripts/check_taginfo.py taginfo.json profiles/car.lua
-        - ${MASON} install clang-format 3.8.1
-        - PATH=$(${MASON} prefix clang-format 3.8.1)/bin:${PATH} ./scripts/format.sh && ./scripts/error_on_dirty.sh
+        - ${MASON} install clang-format 10.0.0
+        - PATH=$(${MASON} prefix clang-format 10.0.0)/bin:${PATH} ./scripts/format.sh && ./scripts/error_on_dirty.sh
         - node ./scripts/validate_changelog.js
         # See issue 4043
         #- npm run docs && ./scripts/error_on_dirty.sh
@@ -152,14 +150,6 @@ matrix:
         CFLAGS='-m32 -msse2 -mfpmath=sse' CXXFLAGS='-m32 -msse2 -mfpmath=sse'
 
     - os: linux
-      compiler: "gcc-7-stxxl"
-      addons: &gcc7
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'libbz2-dev', 'libstxxl-dev', 'libxml2-dev', 'libzip-dev', 'liblua5.2-dev', 'libtbb-dev', 'libboost-all-dev']
-      env: CCOMPILER='gcc-7' CXXCOMPILER='g++-7' BUILD_TYPE='Release' ENABLE_STXXL=On
-
-    - os: linux
       compiler: "gcc-5-release"
       addons: &gcc49
         apt:
@@ -181,15 +171,23 @@ matrix:
       # we use the xcode provides clang and don't install our own
       env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="10"
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: osx
       osx_image: xcode9.2
-      compiler: "mason-osx-release-node-8"
+      compiler: "mason-osx-release-node-12"
       # we use the xcode provides clang and don't install our own
-      env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="8"
+      env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="12"
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
+
+    - os: osx
+      osx_image: xcode9.2
+      compiler: "mason-osx-release-node-14"
+      # we use the xcode provides clang and don't install our own
+      env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="14"
+      after_success:
+        - ./scripts/travis/node_package.sh
 
     # Shared Library
     - os: linux
@@ -203,12 +201,12 @@ matrix:
     # Node build jobs. These skip running the tests.
     - os: linux
       sudo: false
-      compiler: "node-8-mason-linux-release"
+      compiler: "node-14-mason-linux-release"
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['libstdc++-4.9-dev']
-      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Release' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="8"
+      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Release' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="14"
       install:
         - pushd ${OSRM_BUILD_DIR}
         - |
@@ -223,16 +221,16 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
-      compiler: "node-8-mason-linux-debug"
+      compiler: "node-14-mason-linux-debug"
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['libstdc++-4.9-dev']
-      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Debug' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="8"
+      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Debug' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="14"
       install:
         - pushd ${OSRM_BUILD_DIR}
         - |
@@ -247,7 +245,55 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
+
+    - os: linux
+      sudo: false
+      compiler: "node-12-mason-linux-release"
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['libstdc++-4.9-dev']
+      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Release' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="12"
+      install:
+        - pushd ${OSRM_BUILD_DIR}
+        - |
+          cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+              -DENABLE_MASON=${ENABLE_MASON:-OFF} \
+              -DENABLE_NODE_BINDINGS=${ENABLE_NODE_BINDINGS:-OFF} \
+              -DENABLE_CCACHE=ON \
+              -DCMAKE_INSTALL_PREFIX=${OSRM_INSTALL_DIR} \
+              -DENABLE_GLIBC_WORKAROUND=ON
+        - make --jobs=${JOBS}
+        - popd
+      script:
+        - npm run nodejs-tests
+      after_success:
+        - ./scripts/travis/node_package.sh
+
+    - os: linux
+      sudo: false
+      compiler: "node-12-mason-linux-debug"
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['libstdc++-4.9-dev']
+      env: CLANG_VERSION='5.0.0' BUILD_TYPE='Debug' ENABLE_MASON=ON ENABLE_LTO=ON JOBS=3 NODE="12"
+      install:
+        - pushd ${OSRM_BUILD_DIR}
+        - |
+          cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+              -DENABLE_MASON=${ENABLE_MASON:-OFF} \
+              -DENABLE_NODE_BINDINGS=${ENABLE_NODE_BINDINGS:-OFF} \
+              -DENABLE_CCACHE=ON \
+              -DCMAKE_INSTALL_PREFIX=${OSRM_INSTALL_DIR} \
+              -DENABLE_GLIBC_WORKAROUND=ON
+        - make --jobs=${JOBS}
+        - popd
+      script:
+        - npm run nodejs-tests
+      after_success:
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -271,7 +317,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -295,7 +341,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: osx
       stage: optional
@@ -304,7 +350,7 @@ matrix:
       # we use the xcode provides clang and don't install our own
       env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="node"
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -328,7 +374,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -352,7 +398,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: osx
       osx_image: xcode9.2
@@ -360,7 +406,7 @@ matrix:
       # we use the xcode provides clang and don't install our own
       env: ENABLE_MASON=ON BUILD_TYPE='Release' CUCUMBER_TIMEOUT=60000 CCOMPILER='clang' CXXCOMPILER='clang++' ENABLE_ASSERTIONS=ON ENABLE_LTO=ON NODE="--lts"
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -384,7 +430,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
     - os: linux
       sudo: false
@@ -408,7 +454,7 @@ matrix:
       script:
         - npm run nodejs-tests
       after_success:
-        - ./scripts/travis/publish.sh
+        - ./scripts/travis/node_package.sh
 
   allow_failures:
     - compiler: "mason-osx-release-node-latest"
@@ -483,7 +529,6 @@ install:
              -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF} \
              -DENABLE_NODE_BINDINGS=${ENABLE_NODE_BINDINGS:-OFF} \
              -DENABLE_SANITIZER=${ENABLE_SANITIZER:-OFF} \
-             -DENABLE_STXXL=${ENABLE_STXXL:-OFF} \
              -DBUILD_TOOLS=ON \
              -DENABLE_CCACHE=ON \
              -DCMAKE_INSTALL_PREFIX=${OSRM_INSTALL_DIR} \
@@ -519,6 +564,7 @@ script:
   - ./unit_tests/util-tests
   - ./unit_tests/server-tests
   - ./unit_tests/partitioner-tests
+  - ./unit_tests/customizer-tests
   - |
     if [ -z "${ENABLE_SANITIZER}" ] && [ "$TARGET_ARCH" != "i686" ]; then
       npm run nodejs-tests
@@ -526,3 +572,14 @@ script:
   - |
   - popd
   - npm test
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "Ej7tPd+XhAlBvA0SnYghYakO6QUwUI+oOtjlkPmy0UfKtIQ4bIzoIm1BDbPwrmNiCSKB7lLZYZpKz68PBRtblfqvTjhzXSzlvFk36pyywgkuNY13N3VQZo2c5CShLCy41nx4+uLkjhLfKYOALSE3OivdJJHLZEsSwx60Csx7owU="
+  skip_cleanup: true
+  file_glob: true
+  file: build/stage/**/*.tar.gz
+  on:
+    tags: true
+    condition: "$PUBLISH = 'On'"
