@@ -33,9 +33,9 @@ RUN NPROC=${BUILD_CONCURRENCY:-$(grep -c ^processor /proc/cpuinfo 2>/dev/null ||
 FROM debian:stretch-slim as runstage
 RUN mkdir -p /src  && mkdir -p /opt
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libboost-program-options1.62.0 libboost-regex1.62.0 \
-        libboost-date-time1.62.0 libboost-chrono1.62.0 libboost-filesystem1.62.0 \
-        libboost-iostreams1.62.0 libboost-thread1.62.0 expat liblua5.2-0 libtbb2 &&\
+    DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends libboost-program-options1.71.0 libboost-regex1.71.0 \
+        libboost-date-time1.71.0 libboost-chrono1.71.0 libboost-filesystem1.71.0 \
+        libboost-iostreams1.71.0 libboost-thread1.71.0 expat liblua5.2-0 libtbb2 &&\
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /opt /opt
