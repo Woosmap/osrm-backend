@@ -657,12 +657,13 @@ inline std::vector<WeightedViaNode>
 makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
                   const Facade &facade,
                   const PhantomNodes &phantom_node_pair,
+                  std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                   const Parameters &parameters)
 {
     Heap &forward_heap = *search_engine_data.forward_heap_1;
     Heap &reverse_heap = *search_engine_data.reverse_heap_1;
 
-    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair);
+    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair, phantomWeights);
     if (forward_heap.Empty() || reverse_heap.Empty())
     {
         return {};
@@ -777,7 +778,7 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &search_engine_data,
                                                const Facade &facade,
                                                const PhantomNodes &phantom_node_pair,
-                                               std::function<EdgeWeight(const PhantomNode &, bool)>,
+                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                                                unsigned number_of_alternatives)
 {
     Parameters parameters = parametersFromRequest(phantom_node_pair);
@@ -799,7 +800,7 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &sear
 
     // Do forward and backward search, save search space overlap as via candidates.
     auto candidate_vias =
-        makeCandidateVias(search_engine_data, facade, phantom_node_pair, parameters);
+        makeCandidateVias(search_engine_data, facade, phantom_node_pair, phantomWeights, parameters);
 
     const auto by_weight = [](const auto &lhs, const auto &rhs) { return lhs.weight < rhs.weight; };
     auto shortest_path_via_it =
