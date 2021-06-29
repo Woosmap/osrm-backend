@@ -446,7 +446,7 @@ BOOST_AUTO_TEST_CASE(shortest_path)
     phantom_nodes.push_back({osrm::engine::PhantomNode{}, osrm::engine::PhantomNode{}});
 
     auto route =
-        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, false);
+        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantomWeights, false);
 
     BOOST_CHECK_EQUAL(route.shortest_path_weight, INVALID_EDGE_WEIGHT);
 }

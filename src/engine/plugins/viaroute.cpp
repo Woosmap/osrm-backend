@@ -128,7 +128,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     }
     else
     {
-        routes = algorithms.ShortestPathSearch(start_end_nodes, route_parameters.continue_straight);
+        routes = algorithms.ShortestPathSearch(start_end_nodes, phantomWeights, route_parameters.continue_straight);
     }
 
     // The post condition for all path searches is we have at least one route in our result.

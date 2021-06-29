@@ -25,6 +25,7 @@ class RoutingAlgorithmsInterface
 
     virtual InternalRouteResult
     ShortestPathSearch(const std::vector<PhantomNodes> &phantom_node_pair,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                        const boost::optional<bool> continue_straight_at_waypoint) const = 0;
 
     virtual InternalRouteResult
@@ -78,6 +79,7 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     InternalRouteResult ShortestPathSearch(
         const std::vector<PhantomNodes> &phantom_node_pair,
+        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
         const boost::optional<bool> continue_straight_at_waypoint) const final override;
 
     InternalRouteResult
@@ -161,10 +163,11 @@ RoutingAlgorithms<Algorithm>::AlternativePathSearch(const PhantomNodes &phantom_
 template <typename Algorithm>
 InternalRouteResult RoutingAlgorithms<Algorithm>::ShortestPathSearch(
     const std::vector<PhantomNodes> &phantom_node_pair,
+    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
     const boost::optional<bool> continue_straight_at_waypoint) const
 {
     return routing_algorithms::shortestPathSearch(
-        heaps, *facade, phantom_node_pair, continue_straight_at_waypoint);
+        heaps, *facade, phantom_node_pair, phantomWeights, continue_straight_at_waypoint);
 }
 
 template <typename Algorithm>

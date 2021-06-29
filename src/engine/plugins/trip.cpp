@@ -55,7 +55,7 @@ bool IsSupportedParameterCombination(const bool fixed_start,
 InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &algorithms,
                                              const std::vector<PhantomNode> &snapped_phantoms,
                                              const std::vector<NodeID> &trip,
-                                             const bool roundtrip) const
+                                             const api::TripParameters &parameters) const
 {
     InternalRouteResult min_route;
     // given the final trip, compute total duration and return the route and location permutation
@@ -72,7 +72,7 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
     }
 
     // return back to the first node if it is a round trip
-    if (roundtrip)
+    if (parameters.roundtrip)
     {
         viapoint = PhantomNodes{snapped_phantoms[trip.back()], snapped_phantoms[trip.front()]};
         min_route.segment_end_coordinates.emplace_back(viapoint);
@@ -84,8 +84,21 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
         // trip comes out to be something like 0 1 4 3 2, so the sizes don't match
         BOOST_ASSERT(min_route.segment_end_coordinates.size() == trip.size() - 1);
     }
+    auto phantomWeights = [&parameters](const PhantomNode &phantom, bool forward) {
+      switch( parameters.optimize) {
+      case osrm::engine::api::RouteParameters::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::RouteParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
 
-    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, {false});
+    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, phantomWeights, {false});
     BOOST_ASSERT_MSG(min_route.shortest_path_weight < INVALID_EDGE_WEIGHT, "unroutable route");
     return min_route;
 }
@@ -269,7 +282,7 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     // get the route when visiting all destinations in optimized order
     InternalRouteResult route =
-        ComputeRoute(algorithms, snapped_phantoms, duration_trip, parameters.roundtrip);
+        ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters);
 
     // get api response
     const std::vector<std::vector<NodeID>> trips = {duration_trip};

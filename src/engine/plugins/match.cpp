@@ -281,11 +281,24 @@ Status MatchPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
             BOOST_ASSERT(current_phantom_node_pair.target_phantom.IsValid());
             sub_routes[index].segment_end_coordinates.emplace_back(current_phantom_node_pair);
         }
+        auto phantomWeights = [&parameters](const PhantomNode &phantom, bool forward) {
+          switch( parameters.optimize) {
+          case osrm::engine::api::RouteParameters::OptimizeType::Distance :
+              return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+              //break ;
+          case osrm::engine::api::RouteParameters::OptimizeType::Time :
+              return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+              //break ;
+          default :
+              return PhantomNode::phantomWeights(phantom,forward);
+              //break ;
+          }
+        };
         // force uturns to be on
         // we split the phantom nodes anyway and only have bi-directional phantom nodes for
         // possible uturns
         sub_routes[index] =
-            algorithms.ShortestPathSearch(sub_routes[index].segment_end_coordinates, {false});
+            algorithms.ShortestPathSearch(sub_routes[index].segment_end_coordinates, phantomWeights, {false});
         BOOST_ASSERT(sub_routes[index].shortest_path_weight != INVALID_EDGE_WEIGHT);
         if (collapse_legs)
         {

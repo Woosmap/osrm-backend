@@ -33,6 +33,7 @@ void searchWithUTurn(SearchEngineData<Algorithm> &engine_working_data,
                      const PhantomNode &target_phantom,
                      const int total_weight_to_forward,
                      const int total_weight_to_reverse,
+                     std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                      int &new_total_weight,
                      std::vector<NodeID> &leg_packed_path)
 {
@@ -41,25 +42,25 @@ void searchWithUTurn(SearchEngineData<Algorithm> &engine_working_data,
     if (search_from_forward_node)
     {
         forward_heap.Insert(source_phantom.forward_segment_id.id,
-                            -source_phantom.GetForwardWeightPlusOffset(),
+                            -phantomWeights(source_phantom,true), //-source_phantomsource_phantom.GetForwardWeightPlusOffset(),
                             source_phantom.forward_segment_id.id);
     }
     if (search_from_reverse_node)
     {
         forward_heap.Insert(source_phantom.reverse_segment_id.id,
-                            -source_phantom.GetReverseWeightPlusOffset(),
+                            -phantomWeights(source_phantom,false), //-source_phantom.GetReverseWeightPlusOffset(),
                             source_phantom.reverse_segment_id.id);
     }
     if (search_to_forward_node)
     {
         reverse_heap.Insert(target_phantom.forward_segment_id.id,
-                            target_phantom.GetForwardWeightPlusOffset(),
+                            phantomWeights(target_phantom,true), //target_phantom.GetForwardWeightPlusOffset(),
                             target_phantom.forward_segment_id.id);
     }
     if (search_to_reverse_node)
     {
         reverse_heap.Insert(target_phantom.reverse_segment_id.id,
-                            target_phantom.GetReverseWeightPlusOffset(),
+                            phantomWeights(target_phantom,false), //target_phantom.GetReverseWeightPlusOffset(),
                             target_phantom.reverse_segment_id.id);
     }
 
@@ -230,9 +231,10 @@ inline void initializeHeap<mld::Algorithm>(SearchEngineData<mld::Algorithm> &eng
 
 template <typename Algorithm>
 InternalRouteResult shortestPathSearch(SearchEngineData<Algorithm> &engine_working_data,
-                                       const DataFacade<Algorithm> &facade,
-                                       const std::vector<PhantomNodes> &phantom_nodes_vector,
-                                       const boost::optional<bool> continue_straight_at_waypoint)
+                   const DataFacade<Algorithm> &facade,
+                   const std::vector<PhantomNodes> &phantom_nodes_vector,
+                   std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                   const boost::optional<bool> continue_straight_at_waypoint)
 {
     InternalRouteResult raw_route_data;
     raw_route_data.segment_end_coordinates = phantom_nodes_vector;
@@ -296,6 +298,7 @@ InternalRouteResult shortestPathSearch(SearchEngineData<Algorithm> &engine_worki
                                 target_phantom,
                                 total_weight_to_forward,
                                 total_weight_to_reverse,
+                                phantomWeights,
                                 new_total_weight_to_forward,
                                 packed_leg_to_forward);
                 // if only the reverse node is valid (e.g. when using the match plugin) we
