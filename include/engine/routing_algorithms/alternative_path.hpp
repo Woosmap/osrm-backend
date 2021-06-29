@@ -19,11 +19,13 @@ namespace routing_algorithms
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<ch::Algorithm> &search_engine_data,
                                                const DataFacade<ch::Algorithm> &facade,
                                                const PhantomNodes &phantom_node_pair,
+                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                                                unsigned number_of_alternatives);
 
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<mld::Algorithm> &search_engine_data,
                                                const DataFacade<mld::Algorithm> &facade,
                                                const PhantomNodes &phantom_node_pair,
+                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                                                unsigned number_of_alternatives);
 
 } // namespace routing_algorithms
