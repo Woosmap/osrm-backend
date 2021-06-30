@@ -107,6 +107,19 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     api::RouteAPI route_api{facade, route_parameters};
 
     InternalManyRoutesResult routes;
+    auto phantomWeights = [&route_parameters](const PhantomNode &phantom, bool forward) {
+      switch( route_parameters.optimize) {
+      case osrm::engine::api::BaseParameters::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::BaseParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
 
     // TODO: in v6 we should remove the boolean and only keep the number parameter.
     // For now just force them to be in sync. and keep backwards compatibility.

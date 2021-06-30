@@ -229,6 +229,7 @@ template <bool DIRECTION, typename Algorithm, typename... Args>
 void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
                         typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                         const typename SearchEngineData<Algorithm>::QueryHeap::HeapNode &heapNode,
+                        bool optimizeDistance,
                         Args... args)
 {
     const auto &partition = facade.GetMultiLevelPartition();
@@ -314,7 +315,7 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
             if (!facade.ExcludeNode(to) &&
                 checkParentCellRestriction(partition.GetCell(level + 1, to), args...))
             {
-                const auto node_weight =
+                const auto node_weight = optimizeDistance ? 1 :
                     facade.GetNodeWeight(DIRECTION == FORWARD_DIRECTION ? heapNode.node : to);
                 const auto turn_penalty = facade.GetWeightPenaltyForEdgeID(edge_data.turn_id);
 
@@ -346,6 +347,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
                  EdgeWeight &path_upper_bound,
                  const bool force_loop_forward,
                  const bool force_loop_reverse,
+                 bool optimizeDistance,
                  Args... args)
 {
     const auto heapNode = forward_heap.DeleteMinGetHeapNode();
@@ -376,7 +378,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
     }
 
     // Relax outgoing edges from node
-    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, args...);
+    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, optimizeDistance, args...);
 }
 
 // With (s, middle, t) we trace back the paths middle -> s and middle -> t.
@@ -425,6 +427,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            weight,
                                            force_loop_forward,
                                            force_loop_reverse,
+                                           true,
                                            args...);
             if (!forward_heap.Empty())
                 forward_heap_min = forward_heap.MinKey();
@@ -438,6 +441,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            weight,
                                            force_loop_reverse,
                                            force_loop_forward,
+                                           true,
                                            args...);
             if (!reverse_heap.Empty())
                 reverse_heap_min = reverse_heap.MinKey();
@@ -494,7 +498,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
             EdgeWeight subpath_weight;
             std::vector<NodeID> subpath_nodes;
             std::vector<EdgeID> subpath_edges;
-            std::tie(subpath_weight, subpath_nodes, subpath_edges) = search(engine_working_data,
+            std::tie(subpath_weight, subpath_nodes, subpath_edges) = mld::search(engine_working_data,
                                                                             facade,
                                                                             forward_heap,
                                                                             reverse_heap,
