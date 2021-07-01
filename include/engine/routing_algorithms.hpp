@@ -21,7 +21,6 @@ class RoutingAlgorithmsInterface
   public:
     virtual InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                           unsigned number_of_alternatives) const = 0;
 
     virtual InternalRouteResult
@@ -75,7 +74,6 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                           unsigned number_of_alternatives) const final override;
 
     InternalRouteResult ShortestPathSearch(
@@ -154,11 +152,10 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 template <typename Algorithm>
 InternalManyRoutesResult
 RoutingAlgorithms<Algorithm>::AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                                                    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                                                     unsigned number_of_alternatives) const
 {
     return routing_algorithms::alternativePathSearch(
-        heaps, *facade, phantom_node_pair, phantomWeights, number_of_alternatives);
+        heaps, *facade, phantom_node_pair, number_of_alternatives);
 }
 
 template <typename Algorithm>

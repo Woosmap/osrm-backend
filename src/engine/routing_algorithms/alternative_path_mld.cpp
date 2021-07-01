@@ -777,7 +777,6 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &search_engine_data,
                                                const Facade &facade,
                                                const PhantomNodes &phantom_node_pair,
-                                               std::function<EdgeWeight(const PhantomNode &, bool)>,
                                                unsigned number_of_alternatives)
 {
     Parameters parameters = parametersFromRequest(phantom_node_pair);

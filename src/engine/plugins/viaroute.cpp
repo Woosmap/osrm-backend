@@ -120,7 +120,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     // https://github.com/Project-OSRM/osrm-backend/issues/3905
     if (1 == start_end_nodes.size() && algorithms.HasAlternativePathSearch() && wants_alternatives)
     {
-        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), phantomWeights, number_of_alternatives);
+        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), number_of_alternatives);
     }
     else if (1 == start_end_nodes.size() && algorithms.HasDirectShortestPathSearch())
     {

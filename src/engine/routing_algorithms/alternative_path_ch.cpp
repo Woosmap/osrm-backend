@@ -567,8 +567,7 @@ bool viaNodeCandidatePassesTTest(SearchEngineData<Algorithm> &engine_working_dat
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &engine_working_data,
                                                const DataFacade<Algorithm> &facade,
                                                const PhantomNodes &phantom_node_pair,
-                                               std::function<EdgeWeight(const PhantomNode &, bool)>,
-                                               unsigned)
+                                               unsigned /*number_of_alternatives*/)
 {
     InternalRouteResult primary_route;
     InternalRouteResult secondary_route;
