@@ -441,7 +441,7 @@ void ExtractionContainers::PrepareEdges(ScriptingEnvironment &scripting_environm
 
             auto &edge = edge_iterator->result;
             edge.weight = std::max<EdgeWeight>(1, std::round(segment.weight * weight_multiplier));
-            edge.duration = std::max<EdgeWeight>(1, std::round(segment.duration * 10.));
+            edge.duration = std::max<EdgeDuration>(1, std::round(segment.duration * 10.));
             edge.distance = accurate_distance;
 
             // assign new node id

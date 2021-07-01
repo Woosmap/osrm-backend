@@ -685,7 +685,7 @@ Updater::LoadAndUpdateEdgeExpandedGraph(std::vector<extractor::EdgeBasedEdge> &e
     const auto compute_new_weight_and_duration =
         [&](const GeometryID geometry_id) -> WeightAndDuration {
         EdgeWeight new_weight = 0;
-        EdgeWeight new_duration = 0;
+        EdgeDuration new_duration = 0;
         if (geometry_id.forward)
         {
             const auto weights = segment_data.GetForwardWeights(geometry_id.id);
@@ -714,7 +714,7 @@ Updater::LoadAndUpdateEdgeExpandedGraph(std::vector<extractor::EdgeBasedEdge> &e
                 new_weight += weight;
             }
             const auto durations = segment_data.GetReverseDurations(geometry_id.id);
-            new_duration = std::accumulate(durations.begin(), durations.end(), EdgeWeight{0});
+            new_duration = std::accumulate(durations.begin(), durations.end(), EdgeDuration{0});
         }
         return std::make_tuple(new_weight, new_duration);
     };
@@ -745,7 +745,7 @@ Updater::LoadAndUpdateEdgeExpandedGraph(std::vector<extractor::EdgeBasedEdge> &e
             // Find a segment with zero speed and simultaneously compute the new edge
             // weight
             EdgeWeight new_weight;
-            EdgeWeight new_duration;
+            EdgeDuration new_duration;
             std::tie(new_weight, new_duration) =
                 accumulated_segment_data[updated_iter - updated_segments.begin()];
 
