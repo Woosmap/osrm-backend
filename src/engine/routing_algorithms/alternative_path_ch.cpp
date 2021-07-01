@@ -568,6 +568,7 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &engi
                                                const DataFacade<Algorithm> &facade,
                                                const PhantomNodes &phantom_node_pair,
                                                std::function<EdgeWeight(const PhantomNode &, bool)>,
+                                               osrm::engine::api::BaseParameters::OptimizeType,
                                                unsigned)
 {
     InternalRouteResult primary_route;

@@ -84,8 +84,21 @@ Status TablePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     bool request_distance = params.annotations & api::TableParameters::AnnotationsType::Distance;
     bool request_duration = params.annotations & api::TableParameters::AnnotationsType::Duration;
 
+    auto phantomWeights = [&params](const PhantomNode &phantom, bool forward) {
+      switch( params.optimize) {
+      case osrm::engine::api::BaseParameters ::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::BaseParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
     auto result_tables_pair = algorithms.ManyToManySearch(
-        snapped_phantoms, params.sources, params.destinations, request_distance);
+        snapped_phantoms, params.sources, params.destinations, request_distance, phantomWeights, params.optimize);
 
     if ((request_duration && result_tables_pair.first.empty()) ||
         (request_distance && result_tables_pair.second.empty()))

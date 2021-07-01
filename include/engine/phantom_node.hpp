@@ -106,6 +106,10 @@ struct PhantomNode
         return reverse_distance + reverse_distance_offset;
     }
 
+    static EdgeWeight phantomWeights(const PhantomNode &phantom, bool forward) {
+        return (forward ? phantom.GetForwardWeightPlusOffset() : phantom.GetReverseWeightPlusOffset());
+    };
+
     bool IsBidirected() const { return forward_segment_id.enabled && reverse_segment_id.enabled; }
 
     bool IsValid(const unsigned number_of_nodes) const

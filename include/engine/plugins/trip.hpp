@@ -33,7 +33,8 @@ class TripPlugin final : public BasePlugin
     InternalRouteResult ComputeRoute(const RoutingAlgorithmsInterface &algorithms,
                                      const std::vector<PhantomNode> &phantom_node_list,
                                      const std::vector<NodeID> &trip,
-                                     const api::TripParameters &parameters) const;
+                                     const api::TripParameters &parameters,
+                                     std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights) const;
 
   public:
     explicit TripPlugin(const int max_locations_trip_) : max_locations_trip(max_locations_trip_) {}
