@@ -24,7 +24,8 @@ class RoutingAlgorithmsInterface
 
     virtual InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,osrm::engine::api::BaseParameters::OptimizeType optimize,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                          osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const = 0;
 
     virtual InternalRouteResult
@@ -87,12 +88,14 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,osrm::engine::api::BaseParameters::OptimizeType optimize,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                          osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const final override;
 
     InternalRouteResult ShortestPathSearch(
         const std::vector<PhantomNodes> &phantom_node_pair,
-        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,osrm::engine::api::BaseParameters::OptimizeType optimize,
+        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+        osrm::engine::api::BaseParameters::OptimizeType optimize,
         const boost::optional<bool> continue_straight_at_waypoint) const final override;
 
     InternalRouteResult
@@ -186,6 +189,7 @@ RoutingAlgorithms<Algorithm>::AlternativePathSearch(const PhantomNodes &phantom_
                                                     std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                                                     osrm::engine::api::BaseParameters::OptimizeType optimize,
                                                     unsigned number_of_alternatives) const
+{
     return routing_algorithms::alternativePathSearch(
         heaps, *facade, phantom_node_pair, phantomWeights, optimize, number_of_alternatives);
 }
