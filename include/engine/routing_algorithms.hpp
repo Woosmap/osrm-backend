@@ -23,7 +23,7 @@ class RoutingAlgorithmsInterface
 
     virtual InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,osrm::engine::api::BaseParameters::OptimizeType optimize,
                           osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const = 0;
 
@@ -89,13 +89,13 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,osrm::engine::api::BaseParameters::OptimizeType optimize,
                           osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const final override;
 
     InternalRouteResult ShortestPathSearch(
         const std::vector<PhantomNodes> &phantom_node_pair,
-        std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+        std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,osrm::engine::api::BaseParameters::OptimizeType optimize,
         osrm::engine::api::BaseParameters::OptimizeType optimize,
         const boost::optional<bool> continue_straight_at_waypoint) const final override;
 
