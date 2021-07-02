@@ -184,7 +184,9 @@ manyToManySearch(SearchEngineData<ch::Algorithm> &engine_working_data,
                  const std::vector<PhantomNode> &phantom_nodes,
                  const std::vector<std::size_t> &source_indices,
                  const std::vector<std::size_t> &target_indices,
-                 const bool calculate_distance)
+                 const bool calculate_distance,
+                 std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights,
+                 osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
 {
     const auto number_of_sources = source_indices.size();
     const auto number_of_targets = target_indices.size();
@@ -207,7 +209,7 @@ manyToManySearch(SearchEngineData<ch::Algorithm> &engine_working_data,
         engine_working_data.InitializeOrClearManyToManyThreadLocalStorage(
             facade.GetNumberOfNodes());
         auto &query_heap = *(engine_working_data.many_to_many_heap);
-        insertTargetInHeap(query_heap, phantom);
+        insertTargetInHeap(query_heap, phantom, phantomWeights);
 
         // Explore search space
         while (!query_heap.Empty())
@@ -230,7 +232,7 @@ manyToManySearch(SearchEngineData<ch::Algorithm> &engine_working_data,
         engine_working_data.InitializeOrClearManyToManyThreadLocalStorage(
             facade.GetNumberOfNodes());
         auto &query_heap = *(engine_working_data.many_to_many_heap);
-        insertSourceInHeap(query_heap, source_phantom);
+        insertSourceInHeap(query_heap, source_phantom, phantomWeights);
 
         // Explore search space
         while (!query_heap.Empty())

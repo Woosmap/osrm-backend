@@ -70,13 +70,13 @@ struct PhantomNode
         return reverse_weight_offset + reverse_weight;
     }
 
-    EdgeWeight GetForwardDuration() const
+    EdgeDuration GetForwardDuration() const
     {
         BOOST_ASSERT(forward_segment_id.enabled);
         return forward_duration + forward_duration_offset;
     }
 
-    EdgeWeight GetReverseDuration() const
+    EdgeDuration GetReverseDuration() const
     {
         BOOST_ASSERT(reverse_segment_id.enabled);
         return reverse_duration + reverse_duration_offset;
@@ -105,6 +105,10 @@ struct PhantomNode
         BOOST_ASSERT(reverse_segment_id.enabled);
         return reverse_distance + reverse_distance_offset;
     }
+
+    static EdgeWeight phantomWeights(const PhantomNode &phantom, bool forward) {
+        return (forward ? phantom.GetForwardWeightPlusOffset() : phantom.GetReverseWeightPlusOffset());
+    };
 
     bool IsBidirected() const { return forward_segment_id.enabled && reverse_segment_id.enabled; }
 
@@ -165,10 +169,10 @@ struct PhantomNode
                          EdgeDistance reverse_distance,
                          EdgeDistance forward_distance_offset,
                          EdgeDistance reverse_distance_offset,
-                         EdgeWeight forward_duration,
-                         EdgeWeight reverse_duration,
-                         EdgeWeight forward_duration_offset,
-                         EdgeWeight reverse_duration_offset,
+                         EdgeDuration forward_duration,
+                         EdgeDuration reverse_duration,
+                         EdgeDuration forward_duration_offset,
+                         EdgeDuration reverse_duration_offset,
                          bool is_valid_forward_source,
                          bool is_valid_forward_target,
                          bool is_valid_reverse_source,
@@ -203,10 +207,10 @@ struct PhantomNode
     EdgeDistance reverse_distance;
     EdgeDistance forward_distance_offset; // TODO: try to remove -> requires path unpacking changes
     EdgeDistance reverse_distance_offset; // TODO: try to remove -> requires path unpacking changes
-    EdgeWeight forward_duration;
-    EdgeWeight reverse_duration;
-    EdgeWeight forward_duration_offset; // TODO: try to remove -> requires path unpacking changes
-    EdgeWeight reverse_duration_offset; // TODO: try to remove -> requires path unpacking changes
+    EdgeDuration forward_duration;
+    EdgeDuration reverse_duration;
+    EdgeDuration forward_duration_offset; // TODO: try to remove -> requires path unpacking changes
+    EdgeDuration reverse_duration_offset; // TODO: try to remove -> requires path unpacking changes
     ComponentID component;
 
     util::Coordinate location; // this is the coordinate of x

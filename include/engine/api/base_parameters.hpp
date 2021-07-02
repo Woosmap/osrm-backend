@@ -76,6 +76,13 @@ struct BaseParameters
         FLATBUFFERS
     };
 
+    enum class OptimizeType
+    {
+        Weight,
+        Time,
+        Distance
+    };
+
     std::vector<util::Coordinate> coordinates;
     std::vector<boost::optional<Hint>> hints;
     std::vector<boost::optional<double>> radiuses;
@@ -90,6 +97,8 @@ struct BaseParameters
     // Remove waypoints array from the response.
     bool skip_waypoints = false;
 
+    OptimizeType optimize = OptimizeType::Weight;
+
     SnappingType snapping = SnappingType::Default;
 
     BaseParameters(std::vector<util::Coordinate> coordinates_ = {},
@@ -98,12 +107,13 @@ struct BaseParameters
                    std::vector<boost::optional<Bearing>> bearings_ = {},
                    std::vector<boost::optional<Approach>> approaches_ = {},
                    bool generate_hints_ = true,
+                   const OptimizeType optimize_ = OptimizeType::Weight,
                    std::vector<std::string> exclude = {},
                    const SnappingType snapping_ = SnappingType::Default)
         : coordinates(std::move(coordinates_)), hints(std::move(hints_)),
           radiuses(std::move(radiuses_)), bearings(std::move(bearings_)),
           approaches(std::move(approaches_)), exclude(std::move(exclude)),
-          generate_hints(generate_hints_), snapping(snapping_)
+          generate_hints(generate_hints_), optimize(optimize_), snapping(snapping_)
     {
     }
 

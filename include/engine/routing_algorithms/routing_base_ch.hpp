@@ -1,6 +1,8 @@
 #ifndef OSRM_ENGINE_ROUTING_BASE_CH_HPP
 #define OSRM_ENGINE_ROUTING_BASE_CH_HPP
 
+
+#include "engine/api/base_parameters.hpp"
 #include "engine/algorithm.hpp"
 #include "engine/datafacade.hpp"
 #include "engine/routing_algorithms/routing_base.hpp"
@@ -451,6 +453,12 @@ void retrievePackedPathFromSingleManyToManyHeap(
     const NodeID middle_node_id,
     std::vector<NodeID> &packed_path);
 
+template <typename Algorithm>
+inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
+getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
+    return NULL; //facade.GetNodeWeight(id) + facade.GetWeightPenaltyForEdgeID(turnId);
+}
+
 // assumes that heaps are already setup correctly.
 // ATTENTION: This only works if no additional offset is supplied next to the Phantom Node
 // Offsets.
@@ -467,6 +475,7 @@ void search(SearchEngineData<Algorithm> &engine_working_data,
             const DataFacade<Algorithm> &facade,
             SearchEngineData<Algorithm>::QueryHeap &forward_heap,
             SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
+            std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
             std::int32_t &weight,
             std::vector<NodeID> &packed_leg,
             const bool force_loop_forward,

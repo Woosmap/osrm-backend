@@ -181,6 +181,15 @@ struct BaseParametersGrammar : boost::spirit::qi::grammar<Iterator, Signature>
         format_rule =
             -format_type[ph::bind(&engine::api::BaseParameters::format, qi::_r1) = qi::_1];
 
+        optimize_type.add("default", engine::api::BaseParameters::OptimizeType::Weight)(
+            "weight", engine::api::BaseParameters::OptimizeType::Weight)(
+            "time", engine::api::BaseParameters::OptimizeType::Time)(
+            "distance", engine::api::BaseParameters::OptimizeType::Distance);
+
+        optimize_rule =
+            qi::lit("optimize=") >
+                optimize_type[ph::bind(&engine::api::BaseParameters::optimize, qi::_r1) = qi::_1];
+
         exclude_rule = qi::lit("exclude=") >
                        (qi::as_string[+qi::char_("a-zA-Z0-9")] %
                         ',')[ph::bind(&engine::api::BaseParameters::exclude, qi::_r1) = qi::_1];
@@ -190,6 +199,7 @@ struct BaseParametersGrammar : boost::spirit::qi::grammar<Iterator, Signature>
                     | bearings_rule(qi::_r1)       //
                     | generate_hints_rule(qi::_r1) //
                     | skip_waypoints_rule(qi::_r1) //
+                    | optimize_rule(qi::_r1)       //
                     | approach_rule(qi::_r1)       //
                     | exclude_rule(qi::_r1)        //
                     | snapping_rule(qi::_r1);
@@ -201,6 +211,7 @@ struct BaseParametersGrammar : boost::spirit::qi::grammar<Iterator, Signature>
     qi::rule<Iterator, Signature> format_rule;
 
     qi::symbols<char, engine::api::BaseParameters::OutputFormatType> format_type;
+    qi::symbols<char, engine::api::BaseParameters::OptimizeType> optimize_type;
 
     qi::real_parser<double, json_policy> double_;
 
@@ -223,6 +234,7 @@ struct BaseParametersGrammar : boost::spirit::qi::grammar<Iterator, Signature>
     qi::rule<Iterator, std::string()> polyline_chars;
     qi::rule<Iterator, double()> unlimited_rule;
     qi::rule<Iterator, Signature> snapping_rule;
+    qi::rule<Iterator, Signature> optimize_rule;
 
     qi::symbols<char, engine::Approach> approach_type;
     qi::symbols<char, engine::api::BaseParameters::SnappingType> snapping_type;

@@ -58,9 +58,14 @@ class BasePlugin
             Error("InvalidValue", "Exclude flag combination is not supported.", result);
             return false;
         }
+        if (!algorithms.HasOptimizeRouteStrategy() && params.optimize!=api::BaseParameters::OptimizeType::Weight)
+        {
+            Error("NotImplemented", "This algorithm does not support optimize flags.", result);
+            return false;
+        }
 
         BOOST_ASSERT_MSG(false,
-                         "There are only two reasons why the algorithm interface can be invalid.");
+                         "There are only three reasons why the algorithm interface can be invalid.");
         return false;
     }
 
