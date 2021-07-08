@@ -1,0 +1,28 @@
+name: Build and deploy.
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    env:
+      VERSION: 5.26.0
+      BUILDKIT_INLINE_CACHE: 1
+      DOCKER_BUILDKIT: 1
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build osrm-backend for .deb and ECR
+      run: |
+        docker build . -t osrm-backend-wgs --target builder --build-arg VERSION=$VERSION
+        docker build . -t osrm-backend-wgs --target exporter -o ./out --build-arg VERSION=$VERSION
+        docker build . -t osrm-backend-wgs --build-arg VERSION=$VERSION
+
+    - name: Push artifacts to gemfury and ECR if branch is master
+      run: ./deploy.sh public.ecr.aws/t1f4l4p3/osrm-backend-wgs
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+        GEMFURY_USERNAME: ${{ secrets.GEMFURY_USERNAME }}
