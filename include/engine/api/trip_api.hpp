@@ -27,6 +27,7 @@ class TripAPI final : public RouteAPI
     void MakeResponse(const std::vector<std::vector<NodeID>> &sub_trips,
                       const std::vector<InternalRouteResult> &sub_routes,
                       const std::vector<PhantomNode> &phantoms,
+                      const char* weightName,
                       osrm::engine::api::ResultT &response) const
     {
         BOOST_ASSERT(sub_trips.size() == sub_routes.size());
@@ -34,17 +35,18 @@ class TripAPI final : public RouteAPI
         if (response.is<flatbuffers::FlatBufferBuilder>())
         {
             auto &fb_result = response.get<flatbuffers::FlatBufferBuilder>();
-            MakeResponse(sub_trips, sub_routes, phantoms, fb_result);
+            MakeResponse(sub_trips, sub_routes, phantoms, weightName, fb_result);
         }
         else
         {
             auto &json_result = response.get<util::json::Object>();
-            MakeResponse(sub_trips, sub_routes, phantoms, json_result);
+            MakeResponse(sub_trips, sub_routes, phantoms, weightName, json_result);
         }
     }
     void MakeResponse(const std::vector<std::vector<NodeID>> &sub_trips,
                       const std::vector<InternalRouteResult> &sub_routes,
                       const std::vector<PhantomNode> &phantoms,
+                      const char* /*weightName*/,
                       flatbuffers::FlatBufferBuilder &fb_result) const
     {
         auto data_timestamp = facade.GetTimestamp();
@@ -68,6 +70,7 @@ class TripAPI final : public RouteAPI
     void MakeResponse(const std::vector<std::vector<NodeID>> &sub_trips,
                       const std::vector<InternalRouteResult> &sub_routes,
                       const std::vector<PhantomNode> &phantoms,
+                      const char* weightName,
                       util::json::Object &response) const
     {
         auto number_of_routes = sub_trips.size();
@@ -78,7 +81,8 @@ class TripAPI final : public RouteAPI
             auto route = MakeRoute(sub_routes[index].segment_end_coordinates,
                                    sub_routes[index].unpacked_path_segments,
                                    sub_routes[index].source_traversed_in_reverse,
-                                   sub_routes[index].target_traversed_in_reverse);
+                                   sub_routes[index].target_traversed_in_reverse,
+                                   weightName);
             routes.values.push_back(std::move(route));
         }
         if (!parameters.skip_waypoints)

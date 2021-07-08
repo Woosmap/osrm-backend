@@ -238,6 +238,8 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                         [](EdgeDistance dist) -> EdgeWeight { return static_cast<EdgeWeight>(100*dist); });
         return tab_distance ;
     };
+    auto weightName = ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
+                        ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
     // compute the duration table of all phantom nodes
     auto result_optimize_table = util::DistTableWrapper<EdgeWeight>(
         ManyToMayWeights(snapped_phantoms, parameters.optimize == api::TripParameters::OptimizeType::Distance),
@@ -298,7 +300,7 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     const std::vector<std::vector<NodeID>> trips = {trip_nodes};
     const std::vector<InternalRouteResult> routes = {route};
     api::TripAPI trip_api{facade, parameters};
-    trip_api.MakeResponse(trips, routes, snapped_phantoms, result);
+    trip_api.MakeResponse(trips, routes, snapped_phantoms, weightName, result);
 
     return Status::Ok;
 }

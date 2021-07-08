@@ -120,6 +120,8 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
           //break ;
       }
     };
+    auto weightName = ( route_parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
+        ( route_parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
 
     // TODO: in v6 we should remove the boolean and only keep the number parameter.
     // For now just force them to be in sync. and keep backwards compatibility.
@@ -173,7 +175,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
             }
         }
 
-        route_api.MakeResponse(routes, start_end_nodes, result);
+        route_api.MakeResponse(routes, start_end_nodes, weightName, result);
     }
     else
     {
