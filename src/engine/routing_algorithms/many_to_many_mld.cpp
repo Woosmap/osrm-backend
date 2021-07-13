@@ -414,6 +414,7 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
                         std::vector<EdgeDuration> &durations_table,
                         std::vector<EdgeDistance> &distances_table,
                         std::vector<NodeID> &middle_nodes_table,
+                        const EdgeWeight max_weight,
                         const PhantomNode &phantom_node,
                         std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                         std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
@@ -421,6 +422,11 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
     const auto heapNode = query_heap.DeleteMinGetHeapNode();
+    const EdgeWeight source_weight = heapNode.weight;
+
+    // Early termination is used by the isochrone search
+    if (source_weight > max_weight)
+        return;
 
     // Check if each encountered node has an entry
     const auto &bucket_list = std::equal_range(search_space_with_buckets.begin(),
@@ -470,6 +476,7 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
                          const unsigned column_idx,
                          typename SearchEngineData<Algorithm>::ManyToManyQueryHeap &query_heap,
                          std::vector<NodeBucket> &search_space_with_buckets,
+                         const EdgeWeight max_weight,
                          const PhantomNode &phantom_node,
                          std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                          std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
@@ -477,6 +484,11 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
     const auto heapNode = query_heap.DeleteMinGetHeapNode();
+    const EdgeWeight target_weight = heapNode.weight;
+
+    // Early termination is used by the isochrone search
+    if (target_weight > max_weight)
+        return;
 
     // Store settled nodes in search space bucket
     search_space_with_buckets.emplace_back(heapNode.node,
@@ -536,6 +548,7 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
                  const std::vector<PhantomNode> &phantom_nodes,
                  const std::vector<std::size_t> &source_indices,
                  const std::vector<std::size_t> &target_indices,
+                 const EdgeWeight max_weight,
                  const bool calculate_distance,
                  std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                  osrm::engine::api::BaseParameters::OptimizeType optimize)
@@ -571,7 +584,7 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
         while (!query_heap.Empty())
         {
             backwardRoutingStep<DIRECTION>(
-                facade, column_idx, query_heap, search_space_with_buckets, target_phantom, phantom_weights, getWeightStrategy(facade,optimize));
+                facade, column_idx, query_heap, search_space_with_buckets, max_weight, target_phantom, phantom_weights, getWeightStrategy(facade,optimize));
         }
     }
 
@@ -608,6 +621,7 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
                                           durations_table,
                                           distances_table,
                                           middle_nodes_table,
+                                          max_weight,
                                           source_phantom,
                                           phantom_weights,
                                           getWeightStrategy(facade,optimize));
@@ -638,6 +652,7 @@ manyToManySearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                  const std::vector<PhantomNode> &phantom_nodes,
                  const std::vector<std::size_t> &source_indices,
                  const std::vector<std::size_t> &target_indices,
+                 const EdgeWeight max_weight,
                  const bool calculate_distance,
                  std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                  osrm::engine::api::BaseParameters::OptimizeType optimize)
@@ -673,6 +688,7 @@ manyToManySearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                                         phantom_nodes,
                                                         target_indices,
                                                         source_indices,
+                                                        max_weight,
                                                         calculate_distance,
                                                         phantom_weights,
                                                         optimize);
@@ -683,6 +699,7 @@ manyToManySearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                                     phantom_nodes,
                                                     source_indices,
                                                     target_indices,
+                                                    max_weight,
                                                     calculate_distance,
                                                     phantom_weights,
                                                     optimize);

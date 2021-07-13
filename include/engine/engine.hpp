@@ -1,6 +1,7 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
+#include "engine/api/isochrone_parameters.hpp"
 #include "engine/api/match_parameters.hpp"
 #include "engine/api/nearest_parameters.hpp"
 #include "engine/api/route_parameters.hpp"
@@ -9,6 +10,7 @@
 #include "engine/api/trip_parameters.hpp"
 #include "engine/datafacade_provider.hpp"
 #include "engine/engine_config.hpp"
+#include "engine/plugins/isochrone.hpp"
 #include "engine/plugins/match.hpp"
 #include "engine/plugins/nearest.hpp"
 #include "engine/plugins/table.hpp"
@@ -39,6 +41,7 @@ class EngineInterface
     virtual Status Trip(const api::TripParameters &parameters, api::ResultT &result) const = 0;
     virtual Status Match(const api::MatchParameters &parameters, api::ResultT &result) const = 0;
     virtual Status Tile(const api::TileParameters &parameters, api::ResultT &result) const = 0;
+    virtual Status Isochrone(const api::IsochroneParameters &parameters, api::ResultT &result) const = 0;
 };
 
 template <typename Algorithm> class Engine final : public EngineInterface
@@ -50,7 +53,8 @@ template <typename Algorithm> class Engine final : public EngineInterface
           nearest_plugin(config.max_results_nearest),                                      //
           trip_plugin(config.max_locations_trip),                                          //
           match_plugin(config.max_locations_map_matching, config.max_radius_map_matching), //
-          tile_plugin()                                                                    //
+          tile_plugin(),                                                                   //
+          isochrone_plugin()                                                               //
 
     {
         if (config.use_shared_memory)
@@ -115,6 +119,11 @@ template <typename Algorithm> class Engine final : public EngineInterface
         return tile_plugin.HandleRequest(GetAlgorithms(params), params, result);
     }
 
+    Status Isochrone(const api::IsochroneParameters &params, api::ResultT &result) const override final
+    {
+        return isochrone_plugin.HandleRequest(GetAlgorithms(params), params, result);
+    }
+
   private:
     template <typename ParametersT> auto GetAlgorithms(const ParametersT &params) const
     {
@@ -129,6 +138,7 @@ template <typename Algorithm> class Engine final : public EngineInterface
     const plugins::TripPlugin trip_plugin;
     const plugins::MatchPlugin match_plugin;
     const plugins::TilePlugin tile_plugin;
+    const plugins::IsochronePlugin isochrone_plugin;
 };
 } // namespace engine
 } // namespace osrm

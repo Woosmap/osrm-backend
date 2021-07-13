@@ -50,7 +50,7 @@ OSRM::OSRM(engine::EngineConfig &config)
         util::exception("Algorithm not implemented!");
     }
 }
-OSRM::~OSRM() = default;
+ OSRM::~OSRM() = default;
 OSRM::OSRM(OSRM &&) noexcept = default;
 OSRM &OSRM::operator=(OSRM &&) noexcept = default;
 
@@ -133,6 +133,12 @@ Status OSRM::Tile(const engine::api::TileParameters &params, std::string &str_re
 Status OSRM::Tile(const engine::api::TileParameters &params, engine::api::ResultT &result) const
 {
     return engine_->Tile(params, result);
+}
+
+Status OSRM::Isochrone(const engine::api::IsochroneParameters &params,
+                               engine::api::ResultT &result) const
+{
+    return engine_->Isochrone(params, result);
 }
 
 } // namespace osrm
