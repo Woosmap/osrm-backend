@@ -409,6 +409,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                 facade,
                 forward_heap,
                 reverse_heap,
+                NULL,
                 weight,
                 packed_leg,
                 force_loop_forward,
@@ -446,7 +447,7 @@ BOOST_AUTO_TEST_CASE(shortest_path)
     phantom_nodes.push_back({osrm::engine::PhantomNode{}, osrm::engine::PhantomNode{}});
 
     auto route =
-        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantomWeights, false);
+        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantomWeights, osrm::engine::api::BaseParameters::OptimizeType::Weight,false);
 
     BOOST_CHECK_EQUAL(route.shortest_path_weight, INVALID_EDGE_WEIGHT);
 }
