@@ -10,6 +10,7 @@
 #include "engine/routing_algorithms/map_matching.hpp"
 #include "engine/routing_algorithms/shortest_path.hpp"
 #include "engine/routing_algorithms/tile_turns.hpp"
+#include "engine/routing_algorithms/isochrone_nodes.hpp"
 
 namespace osrm
 {
@@ -42,7 +43,8 @@ class RoutingAlgorithmsInterface
                      const std::vector<std::size_t> &target_indices,
                      const bool calculate_distance,
                      std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
-                     osrm::engine::api::BaseParameters::OptimizeType optimize) const = 0;
+                     osrm::engine::api::BaseParameters::OptimizeType optimize,
+                     const EdgeWeight max_weight = std::numeric_limits<EdgeWeight>::max()) const = 0;
 
     virtual routing_algorithms::SubMatchingList
     MapMatching(const routing_algorithms::CandidateLists &candidates_list,
@@ -54,6 +56,10 @@ class RoutingAlgorithmsInterface
     virtual std::vector<routing_algorithms::TurnData>
     GetTileTurns(const std::vector<datafacade::BaseDataFacade::RTreeLeaf> &edges,
                  const std::vector<std::size_t> &sorted_edge_indexes) const = 0;
+
+    virtual std::vector<PhantomNode>
+    IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
+                   const api::IsochroneParameters &parameters) const = 0;
 
     virtual const DataFacadeBase &GetFacade() const = 0;
 
@@ -104,7 +110,8 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
                      const std::vector<std::size_t> &target_indices,
                      const bool calculate_distance,
                      std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
-                     osrm::engine::api::BaseParameters::OptimizeType optimize) const final override;
+                     osrm::engine::api::BaseParameters::OptimizeType optimize,
+                     const EdgeWeight max_weight = std::numeric_limits<EdgeWeight>::max()) const final override;
 
     routing_algorithms::SubMatchingList
     MapMatching(const routing_algorithms::CandidateLists &candidates_list,
@@ -116,6 +123,10 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
     std::vector<routing_algorithms::TurnData>
     GetTileTurns(const std::vector<datafacade::BaseDataFacade::RTreeLeaf> &edges,
                  const std::vector<std::size_t> &sorted_edge_indexes) const final override;
+
+    std::vector<PhantomNode>
+    IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
+                   const api::IsochroneParameters &parameters) const final override;
 
     const DataFacadeBase &GetFacade() const final override { return *facade; }
 
@@ -225,7 +236,8 @@ RoutingAlgorithms<Algorithm>::ManyToManySearch(const std::vector<PhantomNode> &p
                                                const std::vector<std::size_t> &_target_indices,
                                                const bool calculate_distance,
                                                std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
-                                               osrm::engine::api::BaseParameters::OptimizeType optimize) const
+                                               osrm::engine::api::BaseParameters::OptimizeType optimize,
+                                               const EdgeWeight max_weight) const
 {
     BOOST_ASSERT(!phantom_nodes.empty());
 
@@ -248,6 +260,7 @@ RoutingAlgorithms<Algorithm>::ManyToManySearch(const std::vector<PhantomNode> &p
                                                 phantom_nodes,
                                                 std::move(source_indices),
                                                 std::move(target_indices),
+                                                max_weight,
                                                 calculate_distance,
                                                 phantom_weights,
                                                 optimize);
@@ -259,6 +272,16 @@ inline std::vector<routing_algorithms::TurnData> RoutingAlgorithms<Algorithm>::G
     const std::vector<std::size_t> &sorted_edge_indexes) const
 {
     return routing_algorithms::getTileTurns(*facade, edges, sorted_edge_indexes);
+}
+
+template <typename Algorithm>
+inline std::vector<PhantomNode> RoutingAlgorithms<Algorithm>::IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
+                                                                             const api::IsochroneParameters &parameters) const
+{
+    return routing_algorithms::isochroneNodes(heaps,
+                                              *facade,
+                                              phantom_nodes,
+                                              parameters);
 }
 
 } // namespace engine

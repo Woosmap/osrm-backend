@@ -468,7 +468,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
     unpacked_edges.reserve(packed_path.size());
 
     unpacked_nodes.push_back(source_node);
-
+    bool allowOverlay = false ;
     for (auto const &packed_edge : packed_path)
     {
         NodeID source, target;
@@ -480,7 +480,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
             unpacked_edges.push_back(facade.FindEdge(source, target));
         }
         else
-        { // an overlay graph edge
+        if( allowOverlay ){ // an overlay graph edge
             LevelID level = getNodeQueryLevel(partition, source, args...);
             CellID parent_cell_id = partition.GetCell(level, source);
             BOOST_ASSERT(parent_cell_id == partition.GetCell(level, target));
@@ -505,7 +505,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                                                                  to_node_weight,
                                                                                  force_loop_forward,
                                                                                  force_loop_reverse,
-                                                                                 INVALID_EDGE_WEIGHT,
+                                                                                 weight_upper_bound,
                                                                                  sublevel,
                                                                                  parent_cell_id);
             BOOST_ASSERT(!subpath_edges.empty());

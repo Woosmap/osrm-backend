@@ -98,6 +98,7 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
                  const std::vector<PhantomNode> &phantom_nodes,
                  const std::vector<std::size_t> &source_indices,
                  const std::vector<std::size_t> &target_indices,
+                 const EdgeWeight max_weight,
                  const bool calculate_distance,
                  std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                  osrm::engine::api::BaseParameters::OptimizeType optimize);

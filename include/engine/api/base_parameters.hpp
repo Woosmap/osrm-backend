@@ -59,7 +59,7 @@ namespace api
  *  - approaches: force the phantom node to start towards the node with the road country side.
  *
  * \see OSRM, Coordinate, Hint, Bearing, RouteParame, RouteParameters, TableParameters,
- *      NearestParameters, TripParameters, MatchParameters and TileParameters
+ *      NearestParameters, TripParameters, MatchParameters, TileParameters and IsochroneParameters
  */
 struct BaseParameters
 {
