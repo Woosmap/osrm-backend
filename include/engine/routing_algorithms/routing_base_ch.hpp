@@ -456,7 +456,11 @@ void retrievePackedPathFromSingleManyToManyHeap(
 template <typename Algorithm>
 inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
 getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
-    return NULL; //facade.GetNodeWeight(id) + facade.GetWeightPenaltyForEdgeID(turnId);
+
+    auto nodeWeight = [](const EdgeID /*id*/, const EdgeID /*turnId*/) {
+        return 0;
+    };
+    return nodeWeight;
 }
 
 // assumes that heaps are already setup correctly.
