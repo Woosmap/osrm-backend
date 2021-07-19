@@ -157,7 +157,7 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                             INVALID_EDGE_WEIGHT,
                             target.reverse_segment_id.id);
     }
-    insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
+    //insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
 
     // TODO: when structured bindings will be allowed change to
     // auto [weight, source_node, target_node, unpacked_edges] = ...
