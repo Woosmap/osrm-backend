@@ -28,6 +28,18 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<Algorithm> &engine
                                              std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                                              osrm::engine::api::BaseParameters::OptimizeType optimize);
 
+/// This is a derived version of <code>directShortestPathSearch</code> with no reverse search
+/// We stop when all the possible routes have a weight higher than asked
+template <typename Algorithm>
+InternalRouteResult
+forwardIsochroneSearch(SearchEngineData<Algorithm> &engine_working_data,
+                       const DataFacade<Algorithm> &facade,
+                       const PhantomNodes &phantom_nodes,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                       osrm::engine::api::BaseParameters::OptimizeType optimize,
+                       EdgeWeight max_weight);
+
+
 } // namespace routing_algorithms
 } // namespace engine
 } // namespace osrm

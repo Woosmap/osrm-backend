@@ -53,6 +53,16 @@ inline LevelID getNodeQueryLevel(const MultiLevelPartition &partition,
 
 inline bool checkParentCellRestriction(CellID, const PhantomNodes &) { return true; }
 
+// Restricted search (Args is simply LevelID):
+//   * used for single level searchs
+template <typename MultiLevelPartition>
+inline LevelID getNodeQueryLevel(const MultiLevelPartition &, NodeID, LevelID level)
+{
+    return level;
+}
+
+inline bool checkParentCellRestriction(CellID, LevelID) { return true; }
+
 // Restricted search (Args is LevelID, CellID):
 //   * use the fixed level for queries
 //   * check if the node cell is the same as the specified parent
@@ -351,7 +361,8 @@ void routingStep(const DataFacade<Algorithm> &facade,
 {
     const auto heapNode = forward_heap.DeleteMinGetHeapNode();
     const auto weight = heapNode.weight;
-
+    util::Coordinate coord = facade.GetCoordinateOfNode(heapNode.node) ;
+    std::cout << "Current min node : (" << coord.lon << ',' << coord.lat << ')' << std::endl ;
     BOOST_ASSERT(!facade.ExcludeNode(heapNode.node));
 
     // Upper bound for the path source -> target with
@@ -431,7 +442,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            args...);
             if (!forward_heap.Empty())
                 forward_heap_min = forward_heap.MinKey();
-        }
+        }/*
         if (!reverse_heap.Empty())
         {
             routingStep<REVERSE_DIRECTION>(facade,
@@ -445,13 +456,53 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            args...);
             if (!reverse_heap.Empty())
                 reverse_heap_min = reverse_heap.MinKey();
-        }
+        }*/
     };
 
     // No path found for both target nodes?
     if (weight >= weight_upper_bound || SPECIAL_NODEID == middle)
     {
-        return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
+        //  TODO Only for isochrones : Add all the leaf nodes
+        //PackedPath targets;
+        //PackedPath all_family ;
+        // Unpack path
+        std::vector<NodeID> unpacked_nodes;
+        std::vector<EdgeID> unpacked_edges;
+        //unpacked_nodes.reserve(targets.size());
+        //unpacked_edges.reserve(targets.size());
+        std::vector<PackedPath> paths ;
+        while (forward_heap.Size()>0 ){
+            NodeID to = forward_heap.Min() ;
+            // Path is from contour to center
+            PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
+            forward_heap.DeleteMin() ;
+            //  Add path from center to contour
+            if( path.size()>1 ) {
+                std::reverse(begin(path), end(path)) ;
+                path.pop_back();
+                NodeID source, target;
+                bool _ ;
+                std::tie(source, target, _) = path.back() ;
+                //  Don't keep if we already have this node
+                if( std::find(unpacked_nodes.begin(), unpacked_nodes.end(), source)!=unpacked_nodes.end())
+                    continue ;
+                //  Don't keep if the node is in an already seen path
+                if( std::find_if(paths.begin(), paths.end(), [&source](PackedPath &path){
+                        return std::find_if( path.begin(), path.end(), [&source](PackedEdge &edge){
+                                   NodeID s, t;
+                                   bool _ ;
+                                   std::tie(s, t, _) = edge ;
+                                   return s==source;
+                               })!=path.end();
+                    })!=paths.end())
+                    continue ;
+                unpacked_nodes.push_back(source);
+                paths.push_back(std::move(path));
+            }
+        }
+        return std::make_tuple(weight, std::move(unpacked_nodes), std::move(unpacked_edges));
+        //  TODO Only for isochrones end
+        //return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
     }
 
     // Get packed path as edges {from node ID, to node ID, from_clique_arc}

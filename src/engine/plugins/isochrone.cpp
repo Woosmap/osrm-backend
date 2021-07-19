@@ -28,6 +28,108 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                                osrm::engine::api::ResultT &result) const
 {
     BOOST_ASSERT(parameters.IsValid());
+    if (parameters.coordinates.size() > 1)
+    {
+        return Error("InvalidOptions", "Only one input coordinate is supported", result);
+    }
+    if (!CheckAllCoordinates(parameters.coordinates))
+        return Error("InvalidOptions", "Coordinates are invalid", result);
+    if (!CheckAlgorithms(parameters, algorithms, result))
+        return Status::Error;
+
+    if (!algorithms.HasDirectShortestPathSearch() && !algorithms.HasShortestPathSearch())
+    {
+        return Error(
+            "NotImplemented",
+            "Direct shortest path search is not implemented for the chosen search algorithm.",
+            result);
+    }
+
+    util::Coordinate startcoord = parameters.coordinates.front();
+    const auto latitude_range = parameters.range /
+                                (util::coordinate_calculation::detail::EARTH_RADIUS * M_PI * 2) *
+                                360;
+
+    const auto longitude_range = 360 * parameters.range /
+                                 ((util::coordinate_calculation::detail::EARTH_RADIUS * M_PI * 2) *
+                                  cos(static_cast<double>(toFloating(startcoord.lat)) *
+                                      util::coordinate_calculation::detail::DEGREE_TO_RAD));
+
+    util::Coordinate southwest{
+        util::FloatLongitude{
+            static_cast<double>(static_cast<double>(toFloating(startcoord.lon)) - longitude_range)},
+        util::FloatLatitude{
+            static_cast<double>(static_cast<double>(toFloating(startcoord.lat)) - latitude_range)}};
+
+    std::vector<util::Coordinate> coordinates;
+    api::IsochroneParameters params = parameters ;
+    params.coordinates.push_back(southwest);
+    const auto &facade = algorithms.GetFacade();
+    auto phantom_node_pairs = GetPhantomNodes(facade, params);
+    if (phantom_node_pairs.size() != params.coordinates.size())
+    {
+        return Error("NoSegment",
+                     MissingPhantomErrorMessage(phantom_node_pairs, parameters.coordinates),
+                     result);
+    }
+    BOOST_ASSERT(phantom_node_pairs.size() == params.coordinates.size());
+
+    std::vector<PhantomNodes> start_end_nodes;
+    start_end_nodes.push_back( PhantomNodes{phantom_node_pairs.front().first,phantom_node_pairs.back().first} );
+    auto phantomWeights = [&parameters](const PhantomNode &phantom, bool forward) {
+      switch( parameters.optimize) {
+      case osrm::engine::api::BaseParameters::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::BaseParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
+    //auto weightName = ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
+    //                    ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
+
+    api::RouteAPI route_api{facade, parameters};
+    InternalManyRoutesResult
+        routes = algorithms.ForwardIsochroneSearch(
+        start_end_nodes.front(), phantomWeights, parameters.optimize, parameters.range);
+
+    if (routes.routes[0].is_valid())
+    {
+        auto collapse_legs = !parameters.waypoints.empty();
+        if (collapse_legs)
+        {
+            std::vector<bool> waypoint_legs(parameters.coordinates.size(), false);
+            std::for_each(parameters.waypoints.begin(),
+                          parameters.waypoints.end(),
+                          [&](const std::size_t waypoint_index) {
+                            BOOST_ASSERT(waypoint_index < waypoint_legs.size());
+                            waypoint_legs[waypoint_index] = true;
+                          });
+            // First and last coordinates should always be waypoints
+            // This gets validated earlier, but double-checking here, jic
+            BOOST_ASSERT(waypoint_legs.front());
+            BOOST_ASSERT(waypoint_legs.back());
+            for (std::size_t i = 0; i < routes.routes.size(); i++)
+            {
+                routes.routes[i] = CollapseInternalRouteResult(routes.routes[i], waypoint_legs);
+            }
+        }
+
+        route_api.MakeResponse(routes, start_end_nodes, "weightName", result);
+    }
+    return Status::Ok;
+}
+
+/*
+Status
+IsochronePlugin::HandleRequest__(const RoutingAlgorithmsInterface &algorithms,
+                               const api::IsochroneParameters &parameters,
+                               osrm::engine::api::ResultT &result) const
+    BOOST_ASSERT(parameters.IsValid());
     //std::vector<double> radiuses;
     //radiuses.push_back(parameters.range) ;
     //std::vector<std::vector<PhantomNodeWithDistance>> phantoms =GetPhantomNodesInRange(algorithms.GetFacade(), parameters, radiuses);
@@ -219,7 +321,7 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     return Status::Ok;
 }
-
+*/
 } // plugins
 } // engine
 } // osrm
