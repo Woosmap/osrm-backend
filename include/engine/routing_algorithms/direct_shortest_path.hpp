@@ -31,7 +31,7 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<Algorithm> &engine
 /// This is a derived version of <code>directShortestPathSearch</code> with no reverse search
 /// We stop when all the possible routes have a weight higher than asked
 template <typename Algorithm>
-InternalRouteResult
+std::vector<util::Coordinate>
 forwardIsochroneSearch(SearchEngineData<Algorithm> &engine_working_data,
                        const DataFacade<Algorithm> &facade,
                        const PhantomNodes &phantom_nodes,

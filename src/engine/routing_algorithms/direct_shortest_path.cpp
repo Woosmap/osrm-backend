@@ -70,7 +70,7 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<ch::Algorithm> &en
 }
 
 template <>
-InternalRouteResult
+std::vector<util::Coordinate>
 forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
                        const DataFacade<ch::Algorithm> &/*facade*/,
                        const PhantomNodes &/*phantom_nodes*/,
@@ -78,8 +78,8 @@ forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
                        osrm::engine::api::BaseParameters::OptimizeType /*optimize*/,
                        EdgeWeight /*max_weight*/)
 {
-    InternalRouteResult raw_route_data;
-    return raw_route_data;
+    std::vector<util::Coordinate> raw_data;
+    return raw_data;
 }
 
 
@@ -116,7 +116,7 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &e
 
 
 template <>
-InternalRouteResult
+std::vector<util::Coordinate>
 forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                        const DataFacade<mld::Algorithm> &facade,
                        const PhantomNodes &phantom_nodes,
@@ -128,6 +128,35 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                                                  facade.GetMaxBorderNodeID() + 1);
     auto &forward_heap = *engine_working_data.forward_heap_1;
     auto &reverse_heap = *engine_working_data.reverse_heap_1;
+
+    const auto &source = phantom_nodes.source_phantom;
+    if (source.IsValidForwardSource())
+    {
+        forward_heap.Insert(source.forward_segment_id.id,
+                            -phantomWeights(source,true),
+                            source.forward_segment_id.id);
+    }
+    if (source.IsValidReverseSource())
+    {
+        forward_heap.Insert(source.reverse_segment_id.id,
+                            -phantomWeights(source,false),
+                            source.reverse_segment_id.id);
+    }
+
+    const auto &target = phantom_nodes.target_phantom;
+    if (target.IsValidForwardTarget())
+    {
+        reverse_heap.Insert(target.forward_segment_id.id,
+                            INVALID_EDGE_WEIGHT,
+                            target.forward_segment_id.id);
+    }
+
+    if (target.IsValidReverseTarget())
+    {
+        reverse_heap.Insert(target.reverse_segment_id.id,
+                            INVALID_EDGE_WEIGHT,
+                            target.reverse_segment_id.id);
+    }
     insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
 
     // TODO: when structured bindings will be allowed change to
@@ -145,12 +174,6 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                                                    max_weight,
                                                                    0);
     std::vector<util::Coordinate> coords ;
-    std::for_each( unpacked_edges.begin(), unpacked_edges.end(), [&](auto edge){
-        const auto &edge_data = facade.GetEdgeData(edge);
-        coords.push_back( facade.GetCoordinateOfNode(edge_data.turn_id) ) ;
-    });
-    std::string poly_turns = encodePolyline<100000>(coords.begin(), coords.end());
-    coords.clear();
     std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](auto node){
       const auto geometry_index = facade.GetGeometryIndex(node);
       const auto copy = [](auto &vector, const auto range) {
@@ -174,19 +197,11 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
       auto beta_b = atan2(x_b,y_b) ;
       return beta_a<beta_b ;
     });
-    std::string poly_nodes = encodePolyline<100000>(coords.begin(), coords.end());
-    coords.clear();
-    /*std::for_each( unpacked_edges.begin(), unpacked_edges.end(), [&](auto edge){
-      coords.push_back( facade.GetCoordinateOfNode(edge) ) ;
-    });
-    std::string poly_edges = encodePolyline<100000>(coords.begin(), coords.end());
-    coords.clear();*/
-    std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](auto node){
-      coords.push_back( facade.GetCoordinateOfNode(facade.GetGeometryIndex(node).id ) ) ;
-    });
-    std::string poly_geo_nodes = encodePolyline<100000>(coords.begin(), coords.end());
+    //std::string poly_nodes = encodePolyline<100000>(coords.begin(), coords.end());
 
-    return extractRoute(facade, weight, {phantom_nodes.source_phantom,phantom_nodes.source_phantom}, unpacked_nodes, unpacked_edges);
+    return coords ;
+
+    //return extractRoute(facade, weight, {phantom_nodes.source_phantom,phantom_nodes.source_phantom}, unpacked_nodes, unpacked_edges);
 }
 } // namespace routing_algorithms
 } // namespace engine

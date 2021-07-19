@@ -361,8 +361,6 @@ void routingStep(const DataFacade<Algorithm> &facade,
 {
     const auto heapNode = forward_heap.DeleteMinGetHeapNode();
     const auto weight = heapNode.weight;
-    util::Coordinate coord = facade.GetCoordinateOfNode(heapNode.node) ;
-    std::cout << "Current min node : (" << coord.lon << ',' << coord.lat << ')' << std::endl ;
     BOOST_ASSERT(!facade.ExcludeNode(heapNode.node));
 
     // Upper bound for the path source -> target with
@@ -418,14 +416,21 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
 
     const auto &partition = facade.GetMultiLevelPartition();
 
+    //  reverse_heap contains the target node for a route search, as it runs as a 2-way search
+    //  In case of an isochrone , we perform a forward search remaining at the lowest level of the multilayer
+    //  It is to notice that :
+    //  * this is a recursive function for a route search (to resolve the high levels)
+    //  * not recursive as we remain at the lowest level for an isochrone search
+    bool reverse_search = reverse_heap.MinKey() != INVALID_EDGE_WEIGHT;
+
     BOOST_ASSERT(!forward_heap.Empty() && forward_heap.MinKey() < INVALID_EDGE_WEIGHT);
-    BOOST_ASSERT(!reverse_heap.Empty() && reverse_heap.MinKey() < INVALID_EDGE_WEIGHT);
+    BOOST_ASSERT(!reverse_heap.Empty() && reverse_heap.MinKey() <= INVALID_EDGE_WEIGHT);
 
     // run two-Target Dijkstra routing step.
     NodeID middle = SPECIAL_NODEID;
     EdgeWeight weight = weight_upper_bound;
     EdgeWeight forward_heap_min = forward_heap.MinKey();
-    EdgeWeight reverse_heap_min = reverse_heap.MinKey();
+    EdgeWeight reverse_heap_min = (reverse_search ? reverse_heap.MinKey() : static_cast<EdgeWeight>(0));
     while (forward_heap.Size() + reverse_heap.Size() > 0 &&
            forward_heap_min + reverse_heap_min < weight)
     {
@@ -442,8 +447,8 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            args...);
             if (!forward_heap.Empty())
                 forward_heap_min = forward_heap.MinKey();
-        }/*
-        if (!reverse_heap.Empty())
+        }
+        if (reverse_search && !reverse_heap.Empty())
         {
             routingStep<REVERSE_DIRECTION>(facade,
                                            reverse_heap,
@@ -456,54 +461,58 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            args...);
             if (!reverse_heap.Empty())
                 reverse_heap_min = reverse_heap.MinKey();
-        }*/
+        }
     };
 
-    // No path found for both target nodes?
+    // This condition is true when
+    // * route search => No path found for both target nodes?
+    // * isochrone search => All the paths explored overpassed the maximum weight given
     if (weight >= weight_upper_bound || SPECIAL_NODEID == middle)
     {
-        //  TODO Only for isochrones : Add all the leaf nodes
-        //PackedPath targets;
-        //PackedPath all_family ;
-        // Unpack path
+        //  We perform reverse searches when loking for routes
+        if( reverse_search )
+            return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
+
+        //  We perform only forward search when loking for isochrones
         std::vector<NodeID> unpacked_nodes;
-        std::vector<EdgeID> unpacked_edges;
-        //unpacked_nodes.reserve(targets.size());
-        //unpacked_edges.reserve(targets.size());
+        std::vector<EdgeID> unpacked_edges;//  Only to be compatible with the return, not filled
         std::vector<PackedPath> paths ;
+        //  Collect all the farthest nodes from all the current explored paths
+        //  The node we want is the one before the last, as the last node is already beyond the limit
+        //  We filter
+        //  * the duplicates
+        //  * the nodes included in an already explored path
         while (forward_heap.Size()>0 ){
             NodeID to = forward_heap.Min() ;
-            // Path is from contour to center
             PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
-            forward_heap.DeleteMin() ;
-            //  Add path from center to contour
-            if( path.size()>1 ) {
-                std::reverse(begin(path), end(path)) ;
-                path.pop_back();
-                NodeID source, target;
-                bool _ ;
-                std::tie(source, target, _) = path.back() ;
-                //  Don't keep if we already have this node
-                if( std::find(unpacked_nodes.begin(), unpacked_nodes.end(), source)!=unpacked_nodes.end())
-                    continue ;
-                //  Don't keep if the node is in an already seen path
-                if( std::find_if(paths.begin(), paths.end(), [&source](PackedPath &path){
-                        return std::find_if( path.begin(), path.end(), [&source](PackedEdge &edge){
-                                   NodeID s, t;
-                                   bool _ ;
-                                   std::tie(s, t, _) = edge ;
-                                   return s==source;
-                               })!=path.end();
-                    })!=paths.end())
-                    continue ;
-                unpacked_nodes.push_back(source);
-                paths.push_back(std::move(path));
+            auto to_weight = forward_heap.MinKey() ;
+            //std::cout << w << "," ;
+            //  Get back to a node under the limit
+            while( to_weight>weight_upper_bound) {
+                to = forward_heap.GetData(to).parent ;
+                to_weight = forward_heap.GetKey(to) ;
             }
+            // Path is from contour to center
+            forward_heap.DeleteMin() ;
+                //  Don't keep if we already have this node
+            if( std::find(unpacked_nodes.begin(), unpacked_nodes.end(), to)!=unpacked_nodes.end())
+                continue ;
+            //  Don't keep if the node is in an already seen path
+            if( std::find_if(paths.begin(), paths.end(), [&to](PackedPath &path){
+                    return std::find_if( path.begin(), path.end(), [&to](PackedEdge &edge){
+                               NodeID s, t;
+                               bool _ ;
+                               std::tie(s, t, _) = edge ;
+                               return t==to;
+                           })!=path.end();
+                })!=paths.end())
+                continue ;
+            unpacked_nodes.push_back(to);
+            paths.push_back(std::move(path));
         }
         return std::make_tuple(weight, std::move(unpacked_nodes), std::move(unpacked_edges));
-        //  TODO Only for isochrones end
-        //return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
     }
+    //  Only go beyond this point for a route search
 
     // Get packed path as edges {from node ID, to node ID, from_clique_arc}
     auto packed_path = retrievePackedPathFromHeap(forward_heap, reverse_heap, middle);

@@ -40,28 +40,28 @@ class IsochroneAPI final : public RouteAPI
   public:
     IsochroneAPI(const datafacade::BaseDataFacade &facade_,
                  const IsochroneParameters &parameters_)
-        : RouteAPI(facade_, parameters_)
+        : RouteAPI(facade_, parameters_), parameters(parameters_)
     {
     }
 
     virtual void
-    MakeResponse(const std::vector<PhantomNode> &phantoms,
+    MakeResponse(const std::vector<util::Coordinate> &points,
                  osrm::engine::api::ResultT &response) const
     {
         if (response.is<flatbuffers::FlatBufferBuilder>())
         {
             auto &fb_result = response.get<flatbuffers::FlatBufferBuilder>();
-            MakeResponse(phantoms,fb_result);
+            MakeResponse(points,fb_result);
         }
         else
         {
             auto &json_result = response.get<util::json::Object>();
-            MakeResponse(phantoms, json_result);
+            MakeResponse(points, json_result);
         }
     }
 
     virtual void
-    MakeResponse(const std::vector<PhantomNode> &/*phantoms*/,
+    MakeResponse(const std::vector<util::Coordinate> &/*points*/,
                  flatbuffers::FlatBufferBuilder &/*fb_result*/) const
     {/*
         auto number_of_sources = parameters.sources.size();
@@ -161,121 +161,49 @@ class IsochroneAPI final : public RouteAPI
     */}
 
     virtual void
-    MakeResponse(const std::vector<PhantomNode> &phantoms,
+    MakeResponse(const std::vector<util::Coordinate> &points,
                  util::json::Object &response) const
     {
-        util::json::Object geometry;
-        geometry.values["type"] = "Point";
-        geometry.values["coordinates"] = MakeContourPoints(phantoms);
+        boost::optional<util::json::Value> geometry;
+        auto begin = points.begin();
+        auto end = points.end();
+        if (parameters.geometries == RouteParameters::GeometriesType::Polyline)
+        {
+            geometry = json::makePolyline<100000>(begin, end);
+        }
+        else if (parameters.geometries == RouteParameters::GeometriesType::Polyline6)
+        {
+            geometry = json::makePolyline<1000000>(begin, end);
+        }
+        else
+        {
+            BOOST_ASSERT(parameters.geometries == RouteParameters::GeometriesType::GeoJSON);
+            geometry = json::makeGeoJSONGeometry(begin, end);
+        }
 
         util::json::Object properties;
-        properties.values["weight"] = 0 ; // TODO Fix me
-        properties.values["geometry"] = geometry ;
-
-        response.values["type"] = "Feature";
+        switch( parameters.optimize ) {
+        case IsochroneParameters::OptimizeType::Weight :
+            properties.values["weight"] = parameters.range ;
+            break ;
+        case IsochroneParameters::OptimizeType::Distance :
+            properties.values["distance"] = parameters.range ;
+            break ;
+        case IsochroneParameters::OptimizeType::Time :
+            properties.values["duration"] = parameters.range ;
+            break ;
+        }
+        if (geometry)
+        {
+            properties.values["geometry"] = *std::move(geometry);
+        }
+        response.values["type"] = "Feature" ;
         response.values["properties"] = properties;
-        std::vector<Coordinate> coords ;
-        std::transform( phantoms.begin(),phantoms.end(), std::back_inserter(coords), [](auto &phantom){return phantom.location;});
-        boost::optional<util::json::Value> json_overview = MakeGeometry(boost::optional<std::vector<Coordinate>>(coords));
-        if( json_overview.has_value() )
-            response.values["overview"] = json_overview.get();
         response.values["code"] = "Ok";
     }
 
   protected:
-    /*virtual flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<fbresult::Waypoint>>>
-    MakeWaypoints(flatbuffers::FlatBufferBuilder &builder,
-                  const std::vector<PhantomNode> &phantoms) const
-    {
-        std::vector<flatbuffers::Offset<fbresult::Waypoint>> waypoints;
-        waypoints.reserve(phantoms.size());
-        BOOST_ASSERT(phantoms.size() == parameters.coordinates.size());
-
-        boost::range::transform(
-            phantoms, std::back_inserter(waypoints), [this, &builder](const PhantomNode &phantom) {
-              return BaseAPI::MakeWaypoint(&builder, phantom)->Finish();
-            });
-        return builder.CreateVector(waypoints);
-    }
-
-    virtual flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<fbresult::Waypoint>>>
-    MakeWaypoints(flatbuffers::FlatBufferBuilder &builder,
-                  const std::vector<PhantomNode> &phantoms,
-                  const std::vector<std::size_t> &indices) const
-    {
-        std::vector<flatbuffers::Offset<fbresult::Waypoint>> waypoints;
-        waypoints.reserve(indices.size());
-        boost::range::transform(indices,
-                                std::back_inserter(waypoints),
-                                [this, &builder, phantoms](const std::size_t idx) {
-                                  BOOST_ASSERT(idx < phantoms.size());
-                                  return BaseAPI::MakeWaypoint(&builder, phantoms[idx])->Finish();
-                                });
-        return builder.CreateVector(waypoints);
-    }
-
-    virtual flatbuffers::Offset<flatbuffers::Vector<float>>
-    MakeDurationTable(flatbuffers::FlatBufferBuilder &builder,
-                      const std::vector<EdgeWeight> &values) const
-    {
-        std::vector<float> distance_table;
-        distance_table.resize(values.size());
-        std::transform(
-            values.begin(), values.end(), distance_table.begin(), [](const EdgeWeight duration) {
-              if (duration == MAXIMAL_EDGE_DURATION)
-              {
-                  return 0.;
-              }
-              return duration / 10.;
-            });
-        return builder.CreateVector(distance_table);
-    }
-
-    virtual flatbuffers::Offset<flatbuffers::Vector<float>>
-    MakeDistanceTable(flatbuffers::FlatBufferBuilder &builder,
-                      const std::vector<EdgeDistance> &values) const
-    {
-        std::vector<float> duration_table;
-        duration_table.resize(values.size());
-        std::transform(
-            values.begin(), values.end(), duration_table.begin(), [](const EdgeDistance distance) {
-              if (distance == INVALID_EDGE_DISTANCE)
-              {
-                  return 0.;
-              }
-              return std::round(distance * 10) / 10.;
-            });
-        return builder.CreateVector(duration_table);
-    }
-
-    virtual flatbuffers::Offset<flatbuffers::Vector<uint32_t>>
-    MakeEstimatesTable(flatbuffers::FlatBufferBuilder &builder,
-                       const std::vector<TableCellRef> &fallback_speed_cells) const
-    {
-        std::vector<uint32_t> fb_table;
-        fb_table.reserve(fallback_speed_cells.size());
-        std::for_each(
-            fallback_speed_cells.begin(), fallback_speed_cells.end(), [&](const auto &cell) {
-              fb_table.push_back(cell.row);
-              fb_table.push_back(cell.column);
-            });
-        return builder.CreateVector(fb_table);
-    }*/
-
-    virtual util::json::Array MakeContourPoints(const std::vector<PhantomNode> &phantoms) const
-    {
-        util::json::Array json_contourpoints;
-        json_contourpoints.values.reserve(phantoms.size());
-        BOOST_ASSERT(phantoms.size() > 0);
-
-        boost::range::transform(
-            phantoms,
-            std::back_inserter(json_contourpoints.values),
-            [this](const PhantomNode &phantom) { return MakeWaypoint(phantom); });
-        return json_contourpoints;
-    }
-
-    //const TableParameters &parameters;
+    const IsochroneParameters &parameters;
 };
 
 } // namespace api
