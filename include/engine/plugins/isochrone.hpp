@@ -31,6 +31,9 @@ class IsochronePlugin final : public BasePlugin
     Status HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                          const api::IsochroneParameters &parameters,
                          osrm::engine::api::ResultT &result) const;
+    Status HandleRequest__(const RoutingAlgorithmsInterface &algorithms,
+                         const api::IsochroneParameters &parameters,
+                         osrm::engine::api::ResultT &result) const;
 };
 }
 }

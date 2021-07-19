@@ -3,6 +3,8 @@
 #include "engine/routing_algorithms/routing_base.hpp"
 #include "engine/routing_algorithms/routing_base_ch.hpp"
 #include "engine/routing_algorithms/routing_base_mld.hpp"
+#include "engine/polyline_compressor.hpp"
+#include <math.h>       /* cos, sin, atan2 */
 
 namespace osrm
 {
@@ -68,6 +70,20 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<ch::Algorithm> &en
 }
 
 template <>
+InternalRouteResult
+forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
+                       const DataFacade<ch::Algorithm> &/*facade*/,
+                       const PhantomNodes &/*phantom_nodes*/,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> /*phantomWeights*/,
+                       osrm::engine::api::BaseParameters::OptimizeType /*optimize*/,
+                       EdgeWeight /*max_weight*/)
+{
+    InternalRouteResult raw_route_data;
+    return raw_route_data;
+}
+
+
+template <>
 InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                              const DataFacade<mld::Algorithm> &facade,
                                              const PhantomNodes &phantom_nodes,
@@ -93,11 +109,85 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &e
                                                                    DO_NOT_FORCE_LOOPS,
                                                                    DO_NOT_FORCE_LOOPS,
                                                                    INVALID_EDGE_WEIGHT,
-                                                                   phantom_nodes);
+                                                                   0);
 
     return extractRoute(facade, weight, phantom_nodes, unpacked_nodes, unpacked_edges);
 }
 
+
+template <>
+InternalRouteResult
+forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
+                       const DataFacade<mld::Algorithm> &facade,
+                       const PhantomNodes &phantom_nodes,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                       osrm::engine::api::BaseParameters::OptimizeType optimize,
+                       EdgeWeight max_weight)
+{
+    engine_working_data.InitializeOrClearFirstThreadLocalStorage(facade.GetNumberOfNodes(),
+                                                                 facade.GetMaxBorderNodeID() + 1);
+    auto &forward_heap = *engine_working_data.forward_heap_1;
+    auto &reverse_heap = *engine_working_data.reverse_heap_1;
+    insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
+
+    // TODO: when structured bindings will be allowed change to
+    // auto [weight, source_node, target_node, unpacked_edges] = ...
+    EdgeWeight weight = max_weight;
+    std::vector<NodeID> unpacked_nodes;
+    std::vector<EdgeID> unpacked_edges;
+    std::tie(weight, unpacked_nodes, unpacked_edges) = mld::search(engine_working_data,
+                                                                   facade,
+                                                                   forward_heap,
+                                                                   reverse_heap,
+                                                                   getWeightStrategy(facade,optimize),
+                                                                   DO_NOT_FORCE_LOOPS,
+                                                                   DO_NOT_FORCE_LOOPS,
+                                                                   max_weight,
+                                                                   0);
+    std::vector<util::Coordinate> coords ;
+    std::for_each( unpacked_edges.begin(), unpacked_edges.end(), [&](auto edge){
+        const auto &edge_data = facade.GetEdgeData(edge);
+        coords.push_back( facade.GetCoordinateOfNode(edge_data.turn_id) ) ;
+    });
+    std::string poly_turns = encodePolyline<100000>(coords.begin(), coords.end());
+    coords.clear();
+    std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](auto node){
+      const auto geometry_index = facade.GetGeometryIndex(node);
+      const auto copy = [](auto &vector, const auto range) {
+        vector.resize(range.size());
+        std::copy(range.begin(), range.end(), vector.begin());
+      };
+      std::vector<NodeID> id_vector;
+      copy( id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id) ) ;
+      coords.push_back( facade.GetCoordinateOfNode(id_vector[1]) ) ;
+    });
+    //  Sort accordint to bearing of vetor (source,point)
+    std::sort( coords.begin(), coords.end(), [&phantom_nodes](util::Coordinate &ca, util::Coordinate &cb){
+      util::Coordinate source = phantom_nodes.source_phantom.location ;
+      auto x_a = cos(static_cast<float>(util::toFloating(ca.lat).__value)) * sin(static_cast<float>(util::toFloating(ca.lon-source.lon).__value));
+      auto y_a = cos(static_cast<float>(util::toFloating(ca.lat).__value)) * sin(static_cast<float>(util::toFloating(source.lat).__value)) -
+               sin(static_cast<float>(util::toFloating(ca.lat).__value)) * cos(static_cast<float>(util::toFloating(source.lat).__value)) * cos(static_cast<float>(util::toFloating(ca.lon-source.lon).__value)) ;
+      auto beta_a = atan2(x_a,y_a) ;
+      auto x_b = cos(static_cast<float>(util::toFloating(cb.lat).__value)) * sin(static_cast<float>(util::toFloating(cb.lon-source.lon).__value));
+      auto y_b = cos(static_cast<float>(util::toFloating(cb.lat).__value)) * sin(static_cast<float>(util::toFloating(source.lat).__value)) -
+                 sin(static_cast<float>(util::toFloating(cb.lat).__value)) * cos(static_cast<float>(util::toFloating(source.lat).__value)) * cos(static_cast<float>(util::toFloating(cb.lon-source.lon).__value)) ;
+      auto beta_b = atan2(x_b,y_b) ;
+      return beta_a<beta_b ;
+    });
+    std::string poly_nodes = encodePolyline<100000>(coords.begin(), coords.end());
+    coords.clear();
+    /*std::for_each( unpacked_edges.begin(), unpacked_edges.end(), [&](auto edge){
+      coords.push_back( facade.GetCoordinateOfNode(edge) ) ;
+    });
+    std::string poly_edges = encodePolyline<100000>(coords.begin(), coords.end());
+    coords.clear();*/
+    std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](auto node){
+      coords.push_back( facade.GetCoordinateOfNode(facade.GetGeometryIndex(node).id ) ) ;
+    });
+    std::string poly_geo_nodes = encodePolyline<100000>(coords.begin(), coords.end());
+
+    return extractRoute(facade, weight, {phantom_nodes.source_phantom,phantom_nodes.source_phantom}, unpacked_nodes, unpacked_edges);
+}
 } // namespace routing_algorithms
 } // namespace engine
 } // namespace osrm
