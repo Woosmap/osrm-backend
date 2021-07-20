@@ -458,7 +458,7 @@ inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
 getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
 
     auto nodeWeight = [](const EdgeID /*id*/, const EdgeID /*turnId*/) {
-        return 0;
+        return static_cast<EdgeWeight>(0);
     };
     return nodeWeight;
 }

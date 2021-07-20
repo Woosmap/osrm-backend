@@ -399,6 +399,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
                    EdgeWeight &weight,
+                   std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
                    std::vector<NodeID> &packed_leg,
                    const bool force_loop_forward,
                    const bool force_loop_reverse,
@@ -409,7 +410,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                 facade,
                 forward_heap,
                 reverse_heap,
-                NULL,
+                nodeWeights,
                 weight,
                 packed_leg,
                 force_loop_forward,
@@ -426,6 +427,16 @@ void unpackPath(const FacadeT &facade,
                 std::vector<PathData> &unpacked_path)
 {
     mld::unpackPath(facade, packed_path_begin, packed_path_end, phantom_nodes, unpacked_path);
+}
+
+template <typename Algorithm>
+inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
+getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
+
+    auto nodeWeight = [](const EdgeID /*id*/, const EdgeID /*turnId*/) {
+      return static_cast<EdgeWeight>(0);
+    };
+    return nodeWeight;
 }
 
 } // namespace offline
