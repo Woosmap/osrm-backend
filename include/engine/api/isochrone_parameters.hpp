@@ -45,14 +45,18 @@ namespace api
  *  - lat: centerpoint
  *  - range: distance to travel
  *
- * \see OSRM, Coordinate, Hint, Bearing, RouteParame, RouteParameters, TableParameters,
+ * \see OSRM, Coordinate, Hint, Bearing, RouteParameters, TableParameters,
  *      NearestParameters, TripParameters, MatchParameters and TileParameters
  */
 struct IsochroneParameters : public RouteParameters
 {
+    /// Range value to consider an isochrone point
     std::int32_t range = 300;
+    /// If the point weight is below that percentage of the range
+    /// => don't consider the point : for cases where it stops before a very long segment
+    std::size_t range_percent = 80;
 
-    bool IsValid() const { return BaseParameters::IsValid() && range >= 1; }
+    bool IsValid() const { return BaseParameters::IsValid() && range >= 1 && range_percent>=0 && range_percent<=100 ; }
 };
 }
 }

@@ -621,7 +621,7 @@ void unpackPackedPaths(InputIt first,
                 EdgeWeight subpath_weight;
                 std::vector<NodeID> subpath_nodes;
                 std::vector<EdgeID> subpath_edges;
-                std::tie(subpath_weight, subpath_nodes, subpath_edges) = search(search_engine_data,
+                std::tie(subpath_weight, subpath_nodes, subpath_edges, std::ignore) = search(search_engine_data,
                                                                                 facade,
                                                                                 forward_heap,
                                                                                 reverse_heap,

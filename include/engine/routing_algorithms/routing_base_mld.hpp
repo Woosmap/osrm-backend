@@ -396,7 +396,8 @@ void routingStep(const DataFacade<Algorithm> &facade,
 
 using UnpackedNodes = std::vector<NodeID>;
 using UnpackedEdges = std::vector<EdgeID>;
-using UnpackedPath = std::tuple<EdgeWeight, UnpackedNodes, UnpackedEdges>;
+using UnpackedWeigths = std::vector<EdgeWeight>;
+using UnpackedPath = std::tuple<EdgeWeight, UnpackedNodes, UnpackedEdges, UnpackedWeigths>;
 
 template <typename Algorithm, typename... Args>
 UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
@@ -411,7 +412,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
 {
     if (forward_heap.Empty() || reverse_heap.Empty())
     {
-        return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
+        return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>(), std::vector<EdgeWeight>());
     }
 
     const auto &partition = facade.GetMultiLevelPartition();
@@ -471,12 +472,12 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
     {
         //  We perform reverse searches when loking for routes
         if( reverse_search )
-            return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>());
+            return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>(), std::vector<EdgeWeight>());
 
-        //  We perform only forward search when loking for isochrones
+        //  We perform only forward search when looking for isochrones
         std::vector<NodeID> unpacked_nodes;
-        std::vector<EdgeID> unpacked_edges;//  Only to be compatible with the return, not filled
-        std::vector<PackedPath> paths ;
+        std::vector<EdgeWeight> unpacked_weigths;
+        std::set<NodeID> nodes_from_paths;
         //  Collect all the farthest nodes from all the current explored paths
         //  The node we want is the one before the last, as the last node is already beyond the limit
         //  We filter
@@ -484,33 +485,39 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
         //  * the nodes included in an already explored path
         while (forward_heap.Size()>0 ){
             NodeID to = forward_heap.Min() ;
-            PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
             auto to_weight = forward_heap.MinKey() ;
-            //std::cout << w << "," ;
             //  Get back to a node under the limit
-            while( to_weight>weight_upper_bound) {
+            if( to_weight>weight_upper_bound ) {
                 to = forward_heap.GetData(to).parent ;
                 to_weight = forward_heap.GetKey(to) ;
             }
-            // Path is from contour to center
-            forward_heap.DeleteMin() ;
-                //  Don't keep if we already have this node
-            if( std::find(unpacked_nodes.begin(), unpacked_nodes.end(), to)!=unpacked_nodes.end())
-                continue ;
+            auto toFar = [&to_weight,&weight_upper_bound]() {
+              return to_weight>weight_upper_bound ;
+            };
+            auto alreadyThere = [&unpacked_nodes](NodeID node) {
+                return std::find(unpacked_nodes.begin(), unpacked_nodes.end(), node)!=unpacked_nodes.end() ;
+            };
+            auto alreadyInPath = [&nodes_from_paths](NodeID node) {
+              return nodes_from_paths.find(node)!= nodes_from_paths.end() ;
+            };
+            //  Don't keep if we already have this node
             //  Don't keep if the node is in an already seen path
-            if( std::find_if(paths.begin(), paths.end(), [&to](PackedPath &path){
-                    return std::find_if( path.begin(), path.end(), [&to](PackedEdge &edge){
-                               NodeID s, t;
-                               bool _ ;
-                               std::tie(s, t, _) = edge ;
-                               return t==to;
-                           })!=path.end();
-                })!=paths.end())
-                continue ;
-            unpacked_nodes.push_back(to);
-            paths.push_back(std::move(path));
+            //  Don't keep if the parent node is in an already seen path (avoids route forks of a single segment)
+            if( !toFar() && !alreadyThere(to) && !alreadyInPath(to) && !alreadyInPath(forward_heap.GetData(to).parent) )
+            {
+                unpacked_nodes.push_back(to);
+                unpacked_weigths.push_back(to_weight);
+            }
+            PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
+            std::for_each(path.begin(), path.end(), [&nodes_from_paths](PackedEdge &edge) {
+              NodeID target;
+              std::tie(std::ignore, target, std::ignore) = edge;
+              nodes_from_paths.insert(target);
+            });
+            //  Next step
+            forward_heap.DeleteMin() ;
         }
-        return std::make_tuple(weight, std::move(unpacked_nodes), std::move(unpacked_edges));
+        return std::make_tuple(weight, std::move(unpacked_nodes), std::vector<EdgeID>(), std::move(unpacked_weigths));
     }
     //  Only go beyond this point for a route search
 
@@ -557,7 +564,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
             EdgeWeight subpath_weight;
             std::vector<NodeID> subpath_nodes;
             std::vector<EdgeID> subpath_edges;
-            std::tie(subpath_weight, subpath_nodes, subpath_edges) = mld::search(engine_working_data,
+            std::tie(subpath_weight, subpath_nodes, subpath_edges, std::ignore) = mld::search(engine_working_data,
                                                                                  facade,
                                                                                  forward_heap,
                                                                                  reverse_heap,
@@ -577,7 +584,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
         }
     }
 
-    return std::make_tuple(weight, std::move(unpacked_nodes), std::move(unpacked_edges));
+    return std::make_tuple(weight, std::move(unpacked_nodes), std::move(unpacked_edges), std::vector<EdgeWeight>());
 }
 
 // Alias to be compatible with the CH-based search
@@ -595,7 +602,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const EdgeWeight weight_upper_bound = INVALID_EDGE_WEIGHT)
 {
     // TODO: change search calling interface to use unpacked_edges result
-    std::tie(weight, unpacked_nodes, std::ignore) = search(engine_working_data,
+    std::tie(weight, unpacked_nodes, std::ignore, std::ignore) = search(engine_working_data,
                                                            facade,
                                                            forward_heap,
                                                            reverse_heap,
@@ -675,7 +682,7 @@ double getNetworkDistance(SearchEngineData<Algorithm> &engine_working_data,
     EdgeWeight weight = INVALID_EDGE_WEIGHT;
     std::vector<NodeID> unpacked_nodes;
     std::vector<EdgeID> unpacked_edges;
-    std::tie(weight, unpacked_nodes, unpacked_edges) = search(engine_working_data,
+    std::tie(weight, unpacked_nodes, unpacked_edges, std::ignore) = search(engine_working_data,
                                                               facade,
                                                               forward_heap,
                                                               reverse_heap,

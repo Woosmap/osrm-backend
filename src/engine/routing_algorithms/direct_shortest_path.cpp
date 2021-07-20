@@ -76,7 +76,8 @@ forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
                        const PhantomNodes &/*phantom_nodes*/,
                        std::function<EdgeWeight(const PhantomNode &, bool)> /*phantomWeights*/,
                        osrm::engine::api::BaseParameters::OptimizeType /*optimize*/,
-                       EdgeWeight /*max_weight*/)
+                       EdgeWeight /*max_weight*/,
+                       EdgeWeight /*min_weight*/)
 {
     std::vector<util::Coordinate> raw_data;
     return raw_data;
@@ -101,7 +102,7 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &e
     EdgeWeight weight = INVALID_EDGE_WEIGHT;
     std::vector<NodeID> unpacked_nodes;
     std::vector<EdgeID> unpacked_edges;
-    std::tie(weight, unpacked_nodes, unpacked_edges) = mld::search(engine_working_data,
+    std::tie(weight, unpacked_nodes, unpacked_edges, std::ignore) = mld::search(engine_working_data,
                                                                    facade,
                                                                    forward_heap,
                                                                    reverse_heap,
@@ -122,7 +123,8 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                        const PhantomNodes &phantom_nodes,
                        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                        osrm::engine::api::BaseParameters::OptimizeType optimize,
-                       EdgeWeight max_weight)
+                       EdgeWeight max_weight,
+                       EdgeWeight min_weight)
 {
     engine_working_data.InitializeOrClearFirstThreadLocalStorage(facade.GetNumberOfNodes(),
                                                                  facade.GetMaxBorderNodeID() + 1);
@@ -163,8 +165,8 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
     // auto [weight, source_node, target_node, unpacked_edges] = ...
     EdgeWeight weight = max_weight;
     std::vector<NodeID> unpacked_nodes;
-    std::vector<EdgeID> unpacked_edges;
-    std::tie(weight, unpacked_nodes, unpacked_edges) = mld::search(engine_working_data,
+    std::vector<EdgeWeight> unpacked_weights;
+    std::tie(weight, unpacked_nodes, std::ignore, unpacked_weights) = mld::search(engine_working_data,
                                                                    facade,
                                                                    forward_heap,
                                                                    reverse_heap,
@@ -173,18 +175,30 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                                                    DO_NOT_FORCE_LOOPS,
                                                                    max_weight,
                                                                    0);
+    BOOST_ASSERT( unpacked_nodes.size() == unpacked_weights.size() ) ;
     std::vector<util::Coordinate> coords ;
+    auto node_weight = unpacked_weights.begin() ;
+    util::UnbufferedLog log(LogLevel::logDEBUG);
+    log << "Skipping ... " ;
     std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](auto node){
       const auto geometry_index = facade.GetGeometryIndex(node);
       const auto copy = [](auto &vector, const auto range) {
         vector.resize(range.size());
         std::copy(range.begin(), range.end(), vector.begin());
       };
-      std::vector<NodeID> id_vector;
-      copy( id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id) ) ;
-      coords.push_back( facade.GetCoordinateOfNode(id_vector[1]) ) ;
+      if( *node_weight>=min_weight ){
+          std::vector<NodeID> id_vector;
+          copy(id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id));
+          coords.push_back(facade.GetCoordinateOfNode(id_vector[1]));
+          log << '(' << coords.back().lat << ',' << coords.back().lon << '+' << *node_weight << ")," ;
+      }
+      else
+      {
+          log << *node_weight << ',' ;
+      }
+      node_weight++ ;
     });
-    //  Sort accordint to bearing of vetor (source,point)
+    //  Sort according to bearing of vector (source -> point)
     std::sort( coords.begin(), coords.end(), [&phantom_nodes](util::Coordinate &ca, util::Coordinate &cb){
       util::Coordinate source = phantom_nodes.source_phantom.location ;
       auto x_a = cos(static_cast<float>(util::toFloating(ca.lat).__value)) * sin(static_cast<float>(util::toFloating(ca.lon-source.lon).__value));
@@ -197,11 +211,9 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
       auto beta_b = atan2(x_b,y_b) ;
       return beta_a<beta_b ;
     });
-    //std::string poly_nodes = encodePolyline<100000>(coords.begin(), coords.end());
+    coords.push_back( coords.front() ) ;
 
     return coords ;
-
-    //return extractRoute(facade, weight, {phantom_nodes.source_phantom,phantom_nodes.source_phantom}, unpacked_nodes, unpacked_edges);
 }
 } // namespace routing_algorithms
 } // namespace engine

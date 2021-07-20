@@ -1,7 +1,7 @@
 #ifndef SERVER_API_BASE_PARAMETERS_GRAMMAR_HPP
 #define SERVER_API_BASE_PARAMETERS_GRAMMAR_HPP
 
-#include "engine/api/base_parameters.hpp"
+#include "engine/api/route_parameters.hpp"
 
 #include "engine/bearing.hpp"
 #include "engine/hint.hpp"
