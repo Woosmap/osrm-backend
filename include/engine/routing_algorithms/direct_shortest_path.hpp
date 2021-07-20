@@ -37,7 +37,8 @@ forwardIsochroneSearch(SearchEngineData<Algorithm> &engine_working_data,
                        const PhantomNodes &phantom_nodes,
                        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                        osrm::engine::api::BaseParameters::OptimizeType optimize,
-                       EdgeWeight max_weight);
+                       EdgeWeight max_weight,
+                       EdgeWeight min_weight);
 
 
 } // namespace routing_algorithms

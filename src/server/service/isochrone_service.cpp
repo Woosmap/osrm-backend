@@ -38,7 +38,7 @@ IsochroneService::RunQuery(std::size_t prefix_length, std::string &query, osrm::
         result = util::json::Object();
         auto &json_result = result.get<util::json::Object>();
         json_result.values["code"] = "InvalidOptions";
-        json_result.values["message"] = "Invalid coodinates.  Range must be >= 1";
+        json_result.values["message"] = "range must be >= 1 ; range_percent must be between 1 and 100";
         return engine::Status::Error;
     }
     BOOST_ASSERT(parameters->IsValid());

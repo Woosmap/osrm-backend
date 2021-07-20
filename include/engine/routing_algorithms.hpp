@@ -41,7 +41,8 @@ class RoutingAlgorithmsInterface
     ForwardIsochroneSearch(const PhantomNodes &phantom_node_pair,
                            std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                            osrm::engine::api::BaseParameters::OptimizeType optimize,
-                           EdgeWeight max_weight) const = 0;
+                           EdgeWeight max_weight,
+                           EdgeWeight min_weight) const = 0;
 
     virtual std::pair<std::vector<EdgeDuration>, std::vector<EdgeDistance>>
     ManyToManySearch(const std::vector<PhantomNode> &phantom_nodes,
@@ -114,7 +115,8 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
     ForwardIsochroneSearch(const PhantomNodes &phantom_nodes,
                            std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
                            osrm::engine::api::BaseParameters::OptimizeType optimize,
-                           EdgeWeight max_weight) const final override;
+                           EdgeWeight max_weight,
+                           EdgeWeight min_weight) const final override;
 
     virtual std::pair<std::vector<EdgeDuration>, std::vector<EdgeDistance>>
     ManyToManySearch(const std::vector<PhantomNode> &phantom_nodes,
@@ -229,10 +231,11 @@ std::vector<util::Coordinate> RoutingAlgorithms<Algorithm>::ForwardIsochroneSear
     const PhantomNodes &phantom_nodes,
     std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
     osrm::engine::api::BaseParameters::OptimizeType optimize,
-    EdgeWeight max_weight) const
+    EdgeWeight max_weight,
+    EdgeWeight min_weight) const
 {
     return routing_algorithms::forwardIsochroneSearch(
-        heaps, *facade, phantom_nodes, phantomWeights, optimize, max_weight);
+        heaps, *facade, phantom_nodes, phantomWeights, optimize, max_weight,min_weight);
 }
 
 template <typename Algorithm>
