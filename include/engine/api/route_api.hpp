@@ -49,7 +49,7 @@ class RouteAPI : public BaseAPI
     MakeResponse(const InternalManyRoutesResult &raw_routes,
                  const std::vector<PhantomNodes>
                      &all_start_end_points, // all used coordinates, ignoring waypoints= parameter
-                 const char* weightName,
+                 const char* weight_name,
                  osrm::engine::api::ResultT &response) const
     {
         BOOST_ASSERT(!raw_routes.routes.empty());
@@ -62,7 +62,7 @@ class RouteAPI : public BaseAPI
         else
         {
             auto &json_result = response.get<util::json::Object>();
-            MakeResponse(raw_routes, all_start_end_points, weightName, json_result);
+            MakeResponse(raw_routes, all_start_end_points, weight_name, json_result);
         }
     }
 
@@ -96,7 +96,7 @@ class RouteAPI : public BaseAPI
     MakeResponse(const InternalManyRoutesResult &raw_routes,
                  const std::vector<PhantomNodes>
                      &all_start_end_points, // all used coordinates, ignoring waypoints= parameter
-                 const char* weightName,
+                 const char* weight_name,
                  util::json::Object &response) const
     {
         util::json::Array jsRoutes;
@@ -110,7 +110,7 @@ class RouteAPI : public BaseAPI
                                                 route.unpacked_path_segments,
                                                 route.source_traversed_in_reverse,
                                                 route.target_traversed_in_reverse,
-                                                weightName));
+                                                weight_name));
         }
 
         if (!parameters.skip_waypoints)
@@ -712,7 +712,7 @@ class RouteAPI : public BaseAPI
                                  const std::vector<std::vector<PathData>> &unpacked_path_segments,
                                  const std::vector<bool> &source_traversed_in_reverse,
                                  const std::vector<bool> &target_traversed_in_reverse,
-                                 const char* weightName) const
+                                 const char* weight_name) const
     {
         auto legs_info = MakeLegs(segment_end_coordinates,
                                   unpacked_path_segments,
@@ -863,7 +863,7 @@ class RouteAPI : public BaseAPI
                                                           std::move(step_geometries),
                                                           std::move(annotations)),
                                       std::move(json_overview),
-                                      weightName ? weightName : facade.GetWeightName());
+                                      weight_name ? weight_name : facade.GetWeightName());
 
         return result;
     }

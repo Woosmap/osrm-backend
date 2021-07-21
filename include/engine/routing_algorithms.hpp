@@ -19,23 +19,21 @@ namespace engine
 class RoutingAlgorithmsInterface
 {
   public:
-    //virtual std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
-    //GetWeightStrategy( osrm::engine::api::BaseParameters::OptimizeType optimize) const = 0 ;
 
     virtual InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                           osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const = 0;
 
     virtual InternalRouteResult
     ShortestPathSearch(const std::vector<PhantomNodes> &phantom_node_pair,
-                       std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,osrm::engine::api::BaseParameters::OptimizeType optimize,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,osrm::engine::api::BaseParameters::OptimizeType optimize,
                        const boost::optional<bool> continue_straight_at_waypoint) const = 0;
 
     virtual InternalRouteResult
     DirectShortestPathSearch(const PhantomNodes &phantom_node_pair,
-                             std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                             std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                              osrm::engine::api::BaseParameters::OptimizeType optimize) const = 0;
 
     virtual std::pair<std::vector<EdgeDuration>, std::vector<EdgeDistance>>
@@ -43,7 +41,7 @@ class RoutingAlgorithmsInterface
                      const std::vector<std::size_t> &source_indices,
                      const std::vector<std::size_t> &target_indices,
                      const bool calculate_distance,
-                     std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights,
+                     std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                      osrm::engine::api::BaseParameters::OptimizeType optimize) const = 0;
 
     virtual routing_algorithms::SubMatchingList
@@ -83,24 +81,21 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     virtual ~RoutingAlgorithms() = default;
 
-    //std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
-    //GetWeightStrategy( osrm::engine::api::BaseParameters::OptimizeType optimize) const final override ;
-
     InternalManyRoutesResult
     AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                          std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                          std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                           osrm::engine::api::BaseParameters::OptimizeType optimize,
                           unsigned number_of_alternatives) const final override;
 
     InternalRouteResult ShortestPathSearch(
         const std::vector<PhantomNodes> &phantom_node_pair,
-        std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+        std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
         osrm::engine::api::BaseParameters::OptimizeType optimize,
         const boost::optional<bool> continue_straight_at_waypoint) const final override;
 
     InternalRouteResult
     DirectShortestPathSearch(const PhantomNodes &phantom_nodes,
-                             std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                             std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                              osrm::engine::api::BaseParameters::OptimizeType optimize) const final override;
 
     virtual std::pair<std::vector<EdgeDuration>, std::vector<EdgeDistance>>
@@ -108,7 +103,7 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
                      const std::vector<std::size_t> &source_indices,
                      const std::vector<std::size_t> &target_indices,
                      const bool calculate_distance,
-                     std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights,
+                     std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                      osrm::engine::api::BaseParameters::OptimizeType optimize) const final override;
 
     routing_algorithms::SubMatchingList
@@ -175,42 +170,35 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
     SearchEngineData<Algorithm> &heaps;
     std::shared_ptr<const DataFacade<Algorithm>> facade;
 };
-/*
-template <typename Algorithm>
-std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
-RoutingAlgorithms<Algorithm>::GetWeightStrategy( osrm::engine::api::BaseParameters::OptimizeType optimize) const
-{
-    return routing_algorithms::getWeightStrategy( &facade, optimize) ;
-}
-*/
+
 template <typename Algorithm>
 InternalManyRoutesResult
 RoutingAlgorithms<Algorithm>::AlternativePathSearch(const PhantomNodes &phantom_node_pair,
-                                                    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                                                    std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                                                     osrm::engine::api::BaseParameters::OptimizeType optimize,
                                                     unsigned number_of_alternatives) const
 {
     return routing_algorithms::alternativePathSearch(
-        heaps, *facade, phantom_node_pair, phantomWeights, optimize, number_of_alternatives);
+        heaps, *facade, phantom_node_pair, phantom_weights, optimize, number_of_alternatives);
 }
 
 template <typename Algorithm>
 InternalRouteResult RoutingAlgorithms<Algorithm>::ShortestPathSearch(
     const std::vector<PhantomNodes> &phantom_node_pair,
-    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights, osrm::engine::api::BaseParameters::OptimizeType optimize,
+    std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights, osrm::engine::api::BaseParameters::OptimizeType optimize,
     const boost::optional<bool> continue_straight_at_waypoint) const
 {
     return routing_algorithms::shortestPathSearch(
-        heaps, *facade, phantom_node_pair, phantomWeights, optimize, continue_straight_at_waypoint);
+        heaps, *facade, phantom_node_pair, phantom_weights, optimize, continue_straight_at_waypoint);
 }
 
 template <typename Algorithm>
 InternalRouteResult RoutingAlgorithms<Algorithm>::DirectShortestPathSearch(
     const PhantomNodes &phantom_nodes,
-    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+    std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
     osrm::engine::api::BaseParameters::OptimizeType optimize) const
 {
-    return routing_algorithms::directShortestPathSearch(heaps, *facade, phantom_nodes, phantomWeights, optimize);
+    return routing_algorithms::directShortestPathSearch(heaps, *facade, phantom_nodes, phantom_weights, optimize);
 }
 
 template <typename Algorithm>
@@ -236,7 +224,7 @@ RoutingAlgorithms<Algorithm>::ManyToManySearch(const std::vector<PhantomNode> &p
                                                const std::vector<std::size_t> &_source_indices,
                                                const std::vector<std::size_t> &_target_indices,
                                                const bool calculate_distance,
-                                               std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights,
+                                               std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                                                osrm::engine::api::BaseParameters::OptimizeType optimize) const
 {
     BOOST_ASSERT(!phantom_nodes.empty());
@@ -261,7 +249,7 @@ RoutingAlgorithms<Algorithm>::ManyToManySearch(const std::vector<PhantomNode> &p
                                                 std::move(source_indices),
                                                 std::move(target_indices),
                                                 calculate_distance,
-                                                phantomWeights,
+                                                phantom_weights,
                                                 optimize);
 }
 
