@@ -199,13 +199,14 @@ curl 'http://router.project-osrm.org/nearest/v1/driving/13.388860,52.517037?numb
 Finds the fastest route between coordinates in the supplied order.
 
 ```endpoint
-GET /route/v1/{profile}/{coordinates}?alternatives={true|false|number}&steps={true|false}&geometries={polyline|polyline6|geojson}&overview={full|simplified|false}&annotations={true|false}
+GET /route/v1/{profile}/{coordinates}?&optimize={distance|time|weight|default}&alternatives={true|false|number}&steps={true|false}&geometries={polyline|polyline6|geojson}&overview={full|simplified|false}&annotations={true|false}
 ```
 
 In addition to the [general options](#general-options) the following options are supported for this service:
 
 |Option      |Values                                       |Description                                                                    |
 |------------|---------------------------------------------|-------------------------------------------------------------------------------|
+|optimize    |`default`, `distance`, `weight` (default), or `time`|Optimization criterium for the route finding. Passing `distance` searches for the shortest route, passing `weight` searches for the more routable route.                            |
 |alternatives|`true`, `false` (default), or Number         |Search for alternative routes. Passing a number `alternatives=n` searches for up to `n` alternative routes.\*                            |
 |steps       |`true`, `false` (default)                    |Returned route steps for each route leg                                        |
 |annotations |`true`, `false` (default), `nodes`, `distance`, `duration`, `datasources`, `weight`, `speed`  |Returns additional metadata for each coordinate along the route geometry.      |
