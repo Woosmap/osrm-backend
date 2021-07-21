@@ -107,7 +107,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     api::RouteAPI route_api{facade, route_parameters};
 
     InternalManyRoutesResult routes;
-    auto phantomWeights = [&route_parameters](const PhantomNode &phantom, bool forward) {
+    auto phantom_weights = [&route_parameters](const PhantomNode &phantom, bool forward) {
       switch( route_parameters.optimize) {
       case osrm::engine::api::BaseParameters::OptimizeType::Distance :
           return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
@@ -120,7 +120,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
           //break ;
       }
     };
-    auto weightName = ( route_parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
+    auto weight_name = ( route_parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
         ( route_parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
 
     // TODO: in v6 we should remove the boolean and only keep the number parameter.
@@ -135,15 +135,15 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     // https://github.com/Project-OSRM/osrm-backend/issues/3905
     if (1 == start_end_nodes.size() && algorithms.HasAlternativePathSearch() && wants_alternatives)
     {
-        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), phantomWeights, route_parameters.optimize, number_of_alternatives);
+        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), phantom_weights, route_parameters.optimize, number_of_alternatives);
     }
     else if (1 == start_end_nodes.size() && algorithms.HasDirectShortestPathSearch())
     {
-        routes = algorithms.DirectShortestPathSearch(start_end_nodes.front(), phantomWeights, route_parameters.optimize);
+        routes = algorithms.DirectShortestPathSearch(start_end_nodes.front(), phantom_weights, route_parameters.optimize);
     }
     else
     {
-        routes = algorithms.ShortestPathSearch(start_end_nodes, phantomWeights, route_parameters.optimize, route_parameters.continue_straight);
+        routes = algorithms.ShortestPathSearch(start_end_nodes, phantom_weights, route_parameters.optimize, route_parameters.continue_straight);
     }
 
     // The post condition for all path searches is we have at least one route in our result.
@@ -175,7 +175,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
             }
         }
 
-        route_api.MakeResponse(routes, start_end_nodes, weightName, result);
+        route_api.MakeResponse(routes, start_end_nodes, weight_name, result);
     }
     else
     {

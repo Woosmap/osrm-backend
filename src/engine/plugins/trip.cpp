@@ -56,7 +56,7 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
                                              const std::vector<PhantomNode> &snapped_phantoms,
                                              const std::vector<NodeID> &trip,
                                              const api::TripParameters &parameters,
-                                             std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights) const
+                                             std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights) const
 {
     InternalRouteResult min_route;
     // given the final trip, compute total duration and return the route and location permutation
@@ -86,7 +86,7 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
         BOOST_ASSERT(min_route.segment_end_coordinates.size() == trip.size() - 1);
     }
 
-    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, phantomWeights, parameters.optimize, {false});
+    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, phantom_weights, parameters.optimize, {false});
     BOOST_ASSERT_MSG(min_route.shortest_path_weight < INVALID_EDGE_WEIGHT, "unroutable route");
     return min_route;
 }
@@ -216,7 +216,7 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     BOOST_ASSERT(snapped_phantoms.size() == number_of_locations);
 
-    auto phantomWeights = [&parameters](const PhantomNode &phantom, bool forward) {
+    auto phantom_weights = [&parameters](const PhantomNode &phantom, bool forward) {
       switch( parameters.optimize) {
       case osrm::engine::api::RouteParameters::OptimizeType::Distance :
           return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
@@ -229,8 +229,8 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
           //break ;
       }
     };
-    auto ManyToMayWeights = [&](const std::vector<PhantomNode> &snapped_phantoms,const bool use_distance) {
-        auto table_result = algorithms.ManyToManySearch(snapped_phantoms, {}, {}, use_distance, phantomWeights,parameters.optimize) ;
+    auto many_to_may_weights = [&](const std::vector<PhantomNode> &snapped_phantoms,const bool use_distance) {
+        auto table_result = algorithms.ManyToManySearch(snapped_phantoms, {}, {}, use_distance, phantom_weights,parameters.optimize) ;
         if( !use_distance ) return table_result.first ;
 
         std::vector<EdgeWeight> tab_distance ;
@@ -238,11 +238,11 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                         [](EdgeDistance dist) -> EdgeWeight { return static_cast<EdgeWeight>(100*dist); });
         return tab_distance ;
     };
-    auto weightName = ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
+    auto weight_name = ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
                         ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
     // compute the duration table of all phantom nodes
     auto result_optimize_table = util::DistTableWrapper<EdgeWeight>(
-        ManyToMayWeights(snapped_phantoms, parameters.optimize == api::TripParameters::OptimizeType::Distance),
+        many_to_may_weights(snapped_phantoms, parameters.optimize == api::TripParameters::OptimizeType::Distance),
         number_of_locations);
 
     if (result_optimize_table.size() == 0)
@@ -294,13 +294,13 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     // get the route when visiting all destinations in optimized order
     InternalRouteResult route =
-        ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters, phantomWeights);
+        ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters, phantom_weights);
 
     // get api response
     const std::vector<std::vector<NodeID>> trips = {trip_nodes};
     const std::vector<InternalRouteResult> routes = {route};
     api::TripAPI trip_api{facade, parameters};
-    trip_api.MakeResponse(trips, routes, snapped_phantoms, weightName, result);
+    trip_api.MakeResponse(trips, routes, snapped_phantoms, weight_name, result);
 
     return Status::Ok;
 }

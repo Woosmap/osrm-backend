@@ -99,7 +99,7 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
                  const std::vector<std::size_t> &source_indices,
                  const std::vector<std::size_t> &target_indices,
                  const bool calculate_distance,
-                 std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights,
+                 std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
                  osrm::engine::api::BaseParameters::OptimizeType optimize);
 
 } // namespace routing_algorithms

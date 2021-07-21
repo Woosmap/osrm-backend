@@ -548,7 +548,7 @@ void unpackPackedPaths(InputIt first,
                        SearchEngineData<Algorithm> &search_engine_data,
                        const Facade &facade,
                        const PhantomNodes &phantom_node_pair,
-                       std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights)
+                       std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
 {
     util::static_assert_iter_category<InputIt, std::input_iterator_tag>();
     util::static_assert_iter_category<OutIt, std::output_iterator_tag>();
@@ -625,7 +625,7 @@ void unpackPackedPaths(InputIt first,
                                                                                 facade,
                                                                                 forward_heap,
                                                                                 reverse_heap,
-                                                                                nodeWeights,
+                                                                                to_node_weight,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 INVALID_EDGE_WEIGHT,
@@ -659,14 +659,14 @@ inline std::vector<WeightedViaNode>
 makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
                   const Facade &facade,
                   const PhantomNodes &phantom_node_pair,
-                  std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                  std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                   osrm::engine::api::BaseParameters::OptimizeType optimize,
                   const Parameters &parameters)
 {
     Heap &forward_heap = *search_engine_data.forward_heap_1;
     Heap &reverse_heap = *search_engine_data.reverse_heap_1;
 
-    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair, phantomWeights);
+    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair, phantom_weights);
     if (forward_heap.Empty() || reverse_heap.Empty())
     {
         return {};
@@ -783,7 +783,7 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &search_engine_data,
                                                const Facade &facade,
                                                const PhantomNodes &phantom_node_pair,
-                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                                                osrm::engine::api::BaseParameters::OptimizeType optimize,
                                                unsigned number_of_alternatives)
 {
@@ -806,7 +806,7 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &sear
 
     // Do forward and backward search, save search space overlap as via candidates.
     auto candidate_vias =
-        makeCandidateVias(search_engine_data, facade, phantom_node_pair, phantomWeights, optimize, parameters);
+        makeCandidateVias(search_engine_data, facade, phantom_node_pair, phantom_weights, optimize, parameters);
 
     const auto by_weight = [](const auto &lhs, const auto &rhs) { return lhs.weight < rhs.weight; };
     auto shortest_path_via_it =

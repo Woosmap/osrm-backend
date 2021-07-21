@@ -21,7 +21,7 @@ template <>
 InternalRouteResult directShortestPathSearch(SearchEngineData<ch::Algorithm> &engine_working_data,
                                              const DataFacade<ch::Algorithm> &facade,
                                              const PhantomNodes &phantom_nodes,
-                                             std::function<EdgeWeight(const PhantomNode &, bool)> /*phantomWeights*/,
+                                             std::function<EdgeWeight(const PhantomNode &, bool)> /*phantom_weights*/,
                                              osrm::engine::api::BaseParameters::OptimizeType optimize)
 {
     engine_working_data.InitializeOrClearFirstThreadLocalStorage(facade.GetNumberOfNodes());
@@ -71,14 +71,14 @@ template <>
 InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                                              const DataFacade<mld::Algorithm> &facade,
                                              const PhantomNodes &phantom_nodes,
-                                             std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                                             std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                                              osrm::engine::api::BaseParameters::OptimizeType optimize)
 {
     engine_working_data.InitializeOrClearFirstThreadLocalStorage(facade.GetNumberOfNodes(),
                                                                  facade.GetMaxBorderNodeID() + 1);
     auto &forward_heap = *engine_working_data.forward_heap_1;
     auto &reverse_heap = *engine_working_data.reverse_heap_1;
-    insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
+    insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantom_weights);
 
     // TODO: when structured bindings will be allowed change to
     // auto [weight, source_node, target_node, unpacked_edges] = ...

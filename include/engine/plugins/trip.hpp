@@ -34,7 +34,7 @@ class TripPlugin final : public BasePlugin
                                      const std::vector<PhantomNode> &phantom_node_list,
                                      const std::vector<NodeID> &trip,
                                      const api::TripParameters &parameters,
-                                     std::function<EdgeWeight(const PhantomNode&,bool)> phantomWeights) const;
+                                     std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights) const;
 
   public:
     explicit TripPlugin(const int max_locations_trip_) : max_locations_trip(max_locations_trip_) {}

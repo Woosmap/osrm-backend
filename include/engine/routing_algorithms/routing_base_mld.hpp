@@ -230,7 +230,7 @@ template <bool DIRECTION, typename Algorithm, typename... Args>
 void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
                         typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                         const typename SearchEngineData<Algorithm>::QueryHeap::HeapNode &heapNode,
-                        std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
+                        std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
                         Args... args)
 {
     const auto &partition = facade.GetMultiLevelPartition();
@@ -316,12 +316,11 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
             if (!facade.ExcludeNode(to) &&
                 checkParentCellRestriction(partition.GetCell(level + 1, to), args...))
             {
-                const auto node_weight = nodeWeights(DIRECTION == FORWARD_DIRECTION ? heapNode.node : to, edge_data.turn_id);
-                //const auto turn_penalty = facade.GetWeightPenaltyForEdgeID(edge_data.turn_id);
+                const auto node_weight = to_node_weight(DIRECTION == FORWARD_DIRECTION ? heapNode.node : to, edge_data.turn_id);
 
                 // TODO: BOOST_ASSERT(edge_data.weight == node_weight + turn_penalty);
 
-                const EdgeWeight to_weight = heapNode.weight + node_weight ; //+ turn_penalty;
+                const EdgeWeight to_weight = heapNode.weight + node_weight ;
 
                 const auto toHeapNode = forward_heap.GetHeapNodeIfWasInserted(to);
                 if (!toHeapNode)
@@ -343,7 +342,7 @@ template <bool DIRECTION, typename Algorithm, typename... Args>
 void routingStep(const DataFacade<Algorithm> &facade,
                  typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                  typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                 std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
+                 std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
                  NodeID &middle_node,
                  EdgeWeight &path_upper_bound,
                  const bool force_loop_forward,
@@ -378,7 +377,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
     }
 
     // Relax outgoing edges from node
-    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, nodeWeights, args...);
+    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, to_node_weight, args...);
 }
 
 // With (s, middle, t) we trace back the paths middle -> s and middle -> t.
@@ -395,7 +394,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                     const DataFacade<Algorithm> &facade,
                     typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                     typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                    std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
+                    std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
                     const bool force_loop_forward,
                     const bool force_loop_reverse,
                     EdgeWeight weight_upper_bound,
@@ -424,7 +423,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
             routingStep<FORWARD_DIRECTION>(facade,
                                            forward_heap,
                                            reverse_heap,
-                                           nodeWeights,
+                                           to_node_weight,
                                            middle,
                                            weight,
                                            force_loop_forward,
@@ -438,7 +437,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
             routingStep<REVERSE_DIRECTION>(facade,
                                            reverse_heap,
                                            forward_heap,
-                                           nodeWeights,
+                                           to_node_weight,
                                            middle,
                                            weight,
                                            force_loop_reverse,
@@ -503,7 +502,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                                                                  facade,
                                                                                  forward_heap,
                                                                                  reverse_heap,
-                                                                                 nodeWeights,
+                                                                                 to_node_weight,
                                                                                  force_loop_forward,
                                                                                  force_loop_reverse,
                                                                                  INVALID_EDGE_WEIGHT,
@@ -528,7 +527,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const DataFacade<Algorithm> &facade,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                   std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> nodeWeights,
+                   std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
                    EdgeWeight &weight,
                    std::vector<NodeID> &unpacked_nodes,
                    const bool force_loop_forward,
@@ -541,7 +540,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                                                            facade,
                                                            forward_heap,
                                                            reverse_heap,
-                                                           nodeWeights,
+                                                           to_node_weight,
                                                            force_loop_forward,
                                                            force_loop_reverse,
                                                            weight_upper_bound,
