@@ -1,4 +1,4 @@
-# 5.26.1-RC1
+# 5.26.1
   - Changes from 5.25.0
     - Features:
         - ADDED: Added support for distance optimization on route (map, trip) queries [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
