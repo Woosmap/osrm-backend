@@ -189,8 +189,13 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
       if( *node_weight>=min_weight ){
           std::vector<NodeID> id_vector;
           copy(id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id));
-          coords.push_back(facade.GetCoordinateOfNode(id_vector[1]));
-          log << '(' << coords.back().lat << ',' << coords.back().lon << '+' << *node_weight << ")," ;
+          auto coord = facade.GetCoordinateOfNode(id_vector[1]) ;
+          using namespace osrm::util::coordinate_calculation;
+          // TODO : Test needed as can include points traversing the sea (200 km from Montpellier will include a point in Corse !!! )
+          if( optimize!=osrm::engine::api::BaseParameters::OptimizeType::Distance || fccApproximateDistance(coord,source.location)<=max_weight ) {
+            coords.push_back(coord);
+            log << '(' << coords.back().lat << ',' << coords.back().lon << '+' << *node_weight << ")," ;
+          }
       }
       else
       {
@@ -201,15 +206,8 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
     //  Sort according to bearing of vector (source -> point)
     std::sort( coords.begin(), coords.end(), [&phantom_nodes](util::Coordinate &ca, util::Coordinate &cb){
       util::Coordinate source = phantom_nodes.source_phantom.location ;
-      auto x_a = cos(static_cast<float>(util::toFloating(ca.lat).__value)) * sin(static_cast<float>(util::toFloating(ca.lon-source.lon).__value));
-      auto y_a = cos(static_cast<float>(util::toFloating(ca.lat).__value)) * sin(static_cast<float>(util::toFloating(source.lat).__value)) -
-               sin(static_cast<float>(util::toFloating(ca.lat).__value)) * cos(static_cast<float>(util::toFloating(source.lat).__value)) * cos(static_cast<float>(util::toFloating(ca.lon-source.lon).__value)) ;
-      auto beta_a = atan2(x_a,y_a) ;
-      auto x_b = cos(static_cast<float>(util::toFloating(cb.lat).__value)) * sin(static_cast<float>(util::toFloating(cb.lon-source.lon).__value));
-      auto y_b = cos(static_cast<float>(util::toFloating(cb.lat).__value)) * sin(static_cast<float>(util::toFloating(source.lat).__value)) -
-                 sin(static_cast<float>(util::toFloating(cb.lat).__value)) * cos(static_cast<float>(util::toFloating(source.lat).__value)) * cos(static_cast<float>(util::toFloating(cb.lon-source.lon).__value)) ;
-      auto beta_b = atan2(x_b,y_b) ;
-      return beta_a<beta_b ;
+      using namespace osrm::util::coordinate_calculation;
+      return bearing(ca,source)<bearing(cb,source) ;
     });
     if( !coords.empty())
         coords.push_back( coords.front() ) ;
