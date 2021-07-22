@@ -1444,6 +1444,28 @@ struct RouteObject FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   static flatbuffers::Offset<RouteObject> Pack(flatbuffers::FlatBufferBuilder &_fbb, const RouteObjectT* _o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
 
+struct IsochroneObjectBuilder
+{
+    flatbuffers::FlatBufferBuilder &fbb_;
+    flatbuffers::uoffset_t start_;
+    void add_polyline(flatbuffers::Offset<flatbuffers::String> polyline) {
+        fbb_.AddOffset(RouteObject::VT_POLYLINE, polyline);
+    }
+    void add_coordinates(flatbuffers::Offset<flatbuffers::Vector<const osrm::engine::api::fbresult::Position *>> coordinates) {
+        fbb_.AddOffset(RouteObject::VT_COORDINATES, coordinates);
+    }
+    explicit IsochroneObjectBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+    : fbb_(_fbb) {
+        start_ = fbb_.StartTable();
+    }
+    IsochroneObjectBuilder &operator=(const IsochroneObjectBuilder &);
+    flatbuffers::Offset<RouteObject> Finish() {
+        const auto end = fbb_.EndTable(start_);
+        auto o = flatbuffers::Offset<RouteObject>(end);
+        return o;
+    }
+};
+
 struct RouteObjectBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
