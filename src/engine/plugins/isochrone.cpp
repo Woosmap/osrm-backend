@@ -105,7 +105,7 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
         iso_nodes = algorithms.ForwardIsochroneSearch(
         start_end_nodes.front(), phantomWeights, parameters.optimize, range,parameters.range_percent*range/100);
 
-    isochrone_api.MakeResponse(iso_nodes, result);
+    isochrone_api.MakeResponse(start_end_nodes.front().source_phantom, iso_nodes, result);
     return Status::Ok;
 }
 

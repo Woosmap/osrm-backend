@@ -31,19 +31,22 @@ IsochroneService::RunQuery(std::size_t prefix_length, std::string &query, osrm::
             "Query string malformed close to position " + std::to_string(prefix_length + position);
         return engine::Status::Error;
     }
-    BOOST_ASSERT(parameters);
 
-    if (!parameters->IsValid())
+    boost::optional<std::string> not_valid = parameters->IsValid(true) ;
+    if (not_valid)
     {
         result = util::json::Object();
         auto &json_result = result.get<util::json::Object>();
         json_result.values["code"] = "InvalidOptions";
-        json_result.values["message"] = "range must be >= 1 ; range_percent must be between 1 and 100";
+        json_result.values["message"] = not_valid.get();
         return engine::Status::Error;
     }
-    BOOST_ASSERT(parameters->IsValid());
 
-    result = util::json::Object();
+    if (parameters->format && parameters->format == engine::api::BaseParameters::OutputFormatType::FLATBUFFERS)
+        result = flatbuffers::FlatBufferBuilder();
+    else
+        result = util::json::Object();
+
     return BaseService::routing_machine.Isochrone(*parameters, result);
 }
 }

@@ -39,6 +39,25 @@ unsigned calculateOverviewZoomLevel(const std::vector<LegGeometry> &leg_geometri
 
     return util::viewport::getFittedZoom(south_west, north_east);
 }
+
+unsigned calculateOverviewZoomLevel(const std::vector<util::Coordinate> &geometry)
+{
+    util::Coordinate south_west{util::FixedLongitude{std::numeric_limits<int>::max()},
+                                util::FixedLatitude{std::numeric_limits<int>::max()}};
+    util::Coordinate north_east{util::FixedLongitude{std::numeric_limits<int>::min()},
+                                util::FixedLatitude{std::numeric_limits<int>::min()}};
+
+    for (const auto &coord : geometry)
+    {
+        south_west.lon = std::min(south_west.lon, coord.lon);
+        south_west.lat = std::min(south_west.lat, coord.lat);
+
+        north_east.lon = std::max(north_east.lon, coord.lon);
+        north_east.lat = std::max(north_east.lat, coord.lat);
+    }
+
+    return util::viewport::getFittedZoom(south_west, north_east);
+}
 } // namespace
 
 std::vector<util::Coordinate> assembleOverview(const std::vector<LegGeometry> &leg_geometries,
@@ -88,6 +107,19 @@ std::vector<util::Coordinate> assembleOverview(const std::vector<LegGeometry> &l
     }
 
     return overview_geometry;
+}
+
+
+std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate> &geometry,
+                                             const bool use_simplification)
+{
+    if (use_simplification)
+    {
+        const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
+        return douglasPeucker(geometry.begin(), geometry.end(), zoom_level);
+    }
+
+    return geometry;
 }
 
 } // namespace guidance

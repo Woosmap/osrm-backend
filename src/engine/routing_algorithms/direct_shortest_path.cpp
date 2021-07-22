@@ -211,7 +211,8 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
       auto beta_b = atan2(x_b,y_b) ;
       return beta_a<beta_b ;
     });
-    coords.push_back( coords.front() ) ;
+    if( !coords.empty())
+        coords.push_back( coords.front() ) ;
 
     return coords ;
 }
