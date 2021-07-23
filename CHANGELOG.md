@@ -1,5 +1,7 @@
-# 5.26.1
+# 5.26.0-WGS1
   - Changes from 5.25.0
+    - Versioning :
+        - Updated version numbering : usage of -WGSn (n:number) for internal modifications. Purpose being to remain compatible with initila versioning
     - Features:
         - ADDED: Added support for distance optimization on route (map, trip) queries [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - Misc:
@@ -8,7 +10,7 @@
         - ADDED: Support Lua version till 5.4  [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - WEB_API:
         - ADDED: New optional parameter `optimize` for `route`, `trip`, `table` that accepts `distance`, `duration`, `weight`, `default` as values (default=weight)
-    
+
 # 5.25.0
   - Changes from 5.24.0
     - Build:
