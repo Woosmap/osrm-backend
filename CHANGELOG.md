@@ -10,7 +10,7 @@
         - ADDED: Support Lua version till 5.4  [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - WEB_API:
         - ADDED: New optional parameter `optimize` for `route`, `trip`, `table` that accepts `distance`, `duration`, `weight`, `default` as values (default=weight)
-
+    
 # 5.25.0
   - Changes from 5.24.0
     - Build:
