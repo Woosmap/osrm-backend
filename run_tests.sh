@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Build the osrm lib
-mkdir -p build
+#mkdir -p build
 cd build
 cmake ..
 cmake --build .
