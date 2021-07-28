@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 
-# Build the osrm lib
-#mkdir -p build
-cd build
-cmake ..
-cmake --build .
-cmake --build . --target install
+set -e
+docker-compose -f docker-compose-test.yml build osrm-backend-test
+docker-compose -f docker-compose-test.yml run --rm osrm-backend-test
 
-# Run cucumber tests with npm
-npm install
-npm link
-npm run test
