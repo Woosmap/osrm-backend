@@ -398,8 +398,8 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const datafacade::ContiguousInternalMemoryDataFacade<Algorithm> &facade,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                   EdgeWeight &weight,
                    std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                   EdgeWeight &weight,
                    std::vector<NodeID> &packed_leg,
                    const bool force_loop_forward,
                    const bool force_loop_reverse,
@@ -458,7 +458,7 @@ BOOST_AUTO_TEST_CASE(shortest_path)
     phantom_nodes.push_back({osrm::engine::PhantomNode{}, osrm::engine::PhantomNode{}});
 
     auto route =
-        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantom_weights, osrm::engine::api::BaseParameters::OptimizeType::Weight,false);
+        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantomWeights, osrm::engine::api::BaseParameters::OptimizeType::Weight,false);
 
     BOOST_CHECK_EQUAL(route.shortest_path_weight, INVALID_EDGE_WEIGHT);
 }
