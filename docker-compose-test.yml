@@ -1,8 +1,8 @@
-version: '2'
+version: '3.8'
 services:
   osrm-backend-test:
     build:
-      context: .
-      dockerfile: Dockerfile
       target: builder
+      args:
+        VERSION: ${VERSION}
     command: sh ./test.sh
