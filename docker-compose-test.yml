@@ -3,6 +3,7 @@ services:
   osrm-backend-test:
     build:
       target: builder
+      context: .
       args:
         VERSION: ${VERSION}
     command: sh ./test.sh
