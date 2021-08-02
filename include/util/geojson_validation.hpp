@@ -76,6 +76,14 @@ inline void validateFeature(const rapidjson::Value &feature)
     const auto coord_array = feature["geometry"].GetObject()["coordinates"].GetArray();
     if (coord_array.Empty())
         throw osrm::util::exception("Feature geometry coordinates member is empty.");
+    if( std::string("polygon") == feature["geometry"].GetObject()["type"].GetString()){
+        //  Polygons have a 3-dimension array
+        //  - Array of polygons
+        //  - Array of points
+        //  - Array of coordinates
+        if( coord_array[0].IsArray() && !coord_array[0][0].IsArray() )
+            throw osrm::util::exception("Feature geometry coordinates of polygon is not a 3-dimension array.");
+    }
 }
 } // namespace util
 } // namespace osrm

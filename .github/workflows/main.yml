@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      VERSION: 5.26.1
+      VERSION: 5.26.0-WGS1
       BUILDKIT_INLINE_CACHE: 1
       DOCKER_BUILDKIT: 1
     steps:
@@ -18,6 +18,9 @@ jobs:
         docker build . -t osrm-backend-wgs --target builder --build-arg VERSION=$VERSION
         docker build . -t osrm-backend-wgs --target exporter -o ./out --build-arg VERSION=$VERSION
         docker build . -t osrm-backend-wgs --build-arg VERSION=$VERSION
+    - name: Test
+      run: |
+        ./run_tests.sh
 
     - name: Push artifacts to gemfury and ECR if branch is master
       run: ./deploy.sh public.ecr.aws/t1f4l4p3/osrm-backend-wgs

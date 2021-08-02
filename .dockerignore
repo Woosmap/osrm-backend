@@ -1,6 +1,13 @@
 out
-test
+!test
 build
 Dockerfile
+cmake-*
+docs
+example
+node_modules
+node*
+docker
 .github
 deploy.sh
+*.bat

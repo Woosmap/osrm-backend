@@ -8,7 +8,7 @@ ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
 RUN apt-get update &&  apt-get install -y curl build-essential git cmake pkg-config \
           libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev \
           libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev \
-          libluabind-dev libluabind0.9.1d1
+          libluabind-dev libluabind0.9.1d1 npm
 
 COPY . /usr/src/app
 WORKDIR /usr/src/app
@@ -16,12 +16,13 @@ WORKDIR /usr/src/app
 RUN mkdir -p build && \
     cd build && \
     cmake .. && \
-    make -j2 install && \
+    make -j8 install && \
     cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME} && \
     cd ../profiles && \
     cp -r * /opt
 
 FROM ubuntu:20.04 as exporter
+
 COPY --from=builder /usr/src/app/build /build
 
 FROM ubuntu:20.04

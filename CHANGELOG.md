@@ -1,5 +1,7 @@
-# 5.26.1
+# 5.26.0-WGS1
   - Changes from 5.25.0
+    - Versioning :
+        - Updated version numbering : usage of -WGSn (n:number) for internal modifications. Purpose being to remain compatible with initila versioning
     - Features:
         - ADDED: Added support for distance optimization on route (map, trip) queries [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - Misc:
