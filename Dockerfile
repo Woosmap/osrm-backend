@@ -1,7 +1,8 @@
+# syntax=docker/dockerfile:1.3
 FROM ubuntu:20.04 as builder
 
 ARG DEBIAN_FRONTEND="noninteractive"
-ARG VERSION="0.0.0"
+ARG VERSION="5.26.0-WGS1"
 ENV TZ="Europe/Paris"
 ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
 
@@ -13,17 +14,20 @@ RUN apt-get update &&  apt-get install -y curl build-essential git cmake pkg-con
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 
-RUN mkdir -p build && \
-    cd build && \
+RUN mkdir -p /usr/src/app/build && \
+    mkdir -p /usr/src/app/build-tmp
+
+RUN --mount=type=cache,target=/usr/src/app/build  \
+    cd build && pwd && ls &&\
     cmake .. && \
-    make -j8 install && \
+    make -j4 install && \
     cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME} && \
-    cd ../profiles && \
-    cp -r * /opt
+    cp -r * ../build-tmp && \
+    cd ../profiles && cp -r * /opt
 
 FROM ubuntu:20.04 as exporter
 
-COPY --from=builder /usr/src/app/build /build
+COPY --from=builder /usr/src/app/build-tmp /build
 
 FROM ubuntu:20.04
 
