@@ -193,7 +193,6 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
           // TODO : Test needed as can include points traversing the sea (200 km from Montpellier will include a point in Corse !!! )
           if( optimize!=osrm::engine::api::BaseParameters::OptimizeType::Distance || fccApproximateDistance(coord,source.location)<=max_weight ) {
             coords.push_back(coord);
-            log << '(' << coords.back().lat << ',' << coords.back().lon << '+' << *node_weight << ")," ;
           }
       }
       else

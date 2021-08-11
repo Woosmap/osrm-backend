@@ -111,13 +111,14 @@ std::vector<util::Coordinate> assembleOverview(const std::vector<LegGeometry> &l
 
 
 std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate> &geometry,
-                                             const bool use_simplification)
+                                             const unsigned alpha_max)
 {
-    if (use_simplification)
-    {
-        const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
-        return douglasPeucker(geometry.begin(), geometry.end(), zoom_level);
-    }
+    const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
+    //  Douglas-Peuker shall be applied before and after the convexification of the polyline
+    //  1st time : to eliminate almost-aligned points that may full the convexification
+    //  2nd time : to clean the convexification result
+    auto convex_geom = almostConvexHull( douglasPeucker(geometry.begin(), geometry.end(), zoom_level), (double)alpha_max ) ;
+    return douglasPeucker(convex_geom.begin(), convex_geom.end(), zoom_level) ;
 
     return geometry;
 }

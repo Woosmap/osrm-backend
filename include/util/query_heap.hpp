@@ -345,6 +345,12 @@ class QueryHeap
         return inserted_nodes[removedIndex];
     }
 
+    void DeleteNode(NodeID node)
+    {
+        const auto index = node_index.peek_index(node);
+        inserted_nodes[index].handle = heap.s_handle_from_iterator(heap.end());
+    }
+
     void DeleteAll()
     {
         auto const none_handle = heap.s_handle_from_iterator(heap.end());

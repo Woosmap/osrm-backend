@@ -50,11 +50,12 @@ namespace api
  */
 struct IsochroneParameters : public RouteParameters
 {
+
     /// Range value to consider an isochrone point
     EdgeWeight range = (optimize==BaseParameters::OptimizeType::Distance ? 1000 : 300);
     /// If the point weight is below that percentage of the range
     /// => don't consider the point : for cases where it stops before a very long segment
-    std::size_t range_percent = 80;
+    std::size_t convexity_value = 50;
 
     bool IsValid() const {
         return BaseParameters::IsValid() &&
@@ -62,7 +63,7 @@ struct IsochroneParameters : public RouteParameters
                range >= (optimize==BaseParameters::OptimizeType::Distance ? 100 : 60) &&
                //   Maximum distance : 200 km / Maximum time : 2 h
                range <= (optimize==BaseParameters::OptimizeType::Distance ? 200*1000 : 2*60*60) &&
-               range_percent<=100 ;
+               convexity_value <=100 ;
     }
 
     boost::optional<std::string> IsValid(bool /*give_me_a_message*/) const {
@@ -79,6 +80,8 @@ struct IsochroneParameters : public RouteParameters
                 return boost::optional<std::string>("The travel time must be in range [1 mn , 2:00 h]");
             break ;
         }
+        if( convexity_value>100 )
+            return boost::optional<std::string>("convexity should be less than 100");
         return boost::optional<std::string>() ;
     }
 };
