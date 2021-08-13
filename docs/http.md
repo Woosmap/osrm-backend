@@ -600,13 +600,13 @@ Defaults to isochrones (points of equal travel time), but can also give isodista
 In addition to the [route options](#route-options) the following options are supported for this service:
 
 ```endpoint
-GET /isochrone/v1/{profile}/{coordinates}?range={value}&range_percent={value}&optimize={distance|duration|weight|default}&geometries={polyline|polyline6|geojson}
+GET /isochrone/v1/{profile}/{coordinates}?range={value}&convexity_value={value}&optimize={distance|duration|weight|default}&geometries={polyline|polyline6|geojson}
 ```
 
 |Option      |Values                                       |Description                                                                    |
 |------------|---------------------------------------------|-------------------------------------------------------------------------------|
 |range       |Number                                       |travel range (distance or time) from source.                            |
-|range_percent|Number (0 -> 100)                           |Percentage of tolerance on the range\*                                        |
+|convexity_value|Number (0 -> 100)                           |Percentage of tolerance on the range\*                                        |
 
 \* With a percentage of 100%, the isoline is made only of isopoints of exact range.
 At a lower percentage, the isoline can be made of more segments (dead-ends)

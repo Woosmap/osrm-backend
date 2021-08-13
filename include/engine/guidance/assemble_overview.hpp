@@ -18,7 +18,7 @@ std::vector<util::Coordinate> assembleOverview(const std::vector<LegGeometry> &l
                                                const bool use_simplification);
 
 std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate> &geometry,
-                                             const bool use_simplification);
+                                             const unsigned alpha_max);
 } // namespace guidance
 } // namespace engine
 } // namespace osrm

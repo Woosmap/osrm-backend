@@ -3,6 +3,7 @@
 set -e
 
 cd build
+cp -r ../build-tmp/* .
 
 echo "BOOST tests ..."
 cmake ..
@@ -39,9 +40,6 @@ echo "Starting util-tests"
 cd ..
 
 echo "Cucumber tests ..."
-cmake ..
-cmake --build .
-cmake --build . --target install
 # Run cucumber tests with npm
 npm install
 npm link

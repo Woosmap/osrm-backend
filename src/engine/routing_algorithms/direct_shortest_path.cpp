@@ -101,13 +101,13 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &e
     std::vector<NodeID> unpacked_nodes;
     std::vector<EdgeID> unpacked_edges;
     std::tie(weight, unpacked_nodes, unpacked_edges, std::ignore) = mld::search(engine_working_data,
-                                                                                facade,
-                                                                                forward_heap,
-                                                                                reverse_heap,
-                                                                                getWeightStrategy(facade,optimize),
-                                                                                DO_NOT_FORCE_LOOPS,
-                                                                                DO_NOT_FORCE_LOOPS,
-                                                                                INVALID_EDGE_WEIGHT,
+                                                                   facade,
+                                                                   forward_heap,
+                                                                   reverse_heap,
+                                                                   getWeightStrategy(facade,optimize),
+                                                                   DO_NOT_FORCE_LOOPS,
+                                                                   DO_NOT_FORCE_LOOPS,
+                                                                   INVALID_EDGE_WEIGHT,
                                                                                 phantom_nodes);
 
     return extractRoute(facade, weight, phantom_nodes, unpacked_nodes, unpacked_edges);
@@ -156,7 +156,7 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                             INVALID_EDGE_WEIGHT,
                             target.reverse_segment_id.id);
     }
-    //insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantomWeights);
+    //insertNodesInHeaps(forward_heap, reverse_heap, phantom_nodes,phantom_weights);
 
     // TODO: when structured bindings will be allowed change to
     // auto [weight, source_node, target_node, unpacked_edges] = ...
@@ -191,7 +191,6 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
           // TODO : Test needed as can include points traversing the sea (200 km from Montpellier will include a point in Corse !!! )
           if( optimize!=osrm::engine::api::BaseParameters::OptimizeType::Distance || fccApproximateDistance(coord,source.location)<=max_weight ) {
             coords.push_back(coord);
-            log << '(' << coords.back().lat << ',' << coords.back().lon << '+' << *node_weight << ")," ;
           }
       }
       else

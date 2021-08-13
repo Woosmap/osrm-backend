@@ -75,6 +75,10 @@ inline std::vector<util::Coordinate> douglasPeucker(const std::vector<util::Coor
 {
     return douglasPeucker(begin(geometry), end(geometry), zoom_level);
 }
+
+
+std::vector<util::Coordinate> convexHull(const std::vector<util::Coordinate> &points);
+std::vector<util::Coordinate> almostConvexHull(const std::vector<util::Coordinate> &points, const double max_alpha);
 } // namespace engine
 } // namespace osrm
 

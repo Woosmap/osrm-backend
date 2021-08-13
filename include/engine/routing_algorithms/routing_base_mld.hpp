@@ -483,40 +483,46 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
         //  We filter
         //  * the duplicates
         //  * the nodes included in an already explored path
+        std::cout << "Number of nodes : " << forward_heap.Size() ;
         while (forward_heap.Size()>0 ){
             NodeID to = forward_heap.Min() ;
             auto to_weight = forward_heap.MinKey() ;
             //  Get back to a node under the limit
-            if( to_weight>weight_upper_bound ) {
+            while( to_weight>weight_upper_bound ) {
                 to = forward_heap.GetData(to).parent ;
                 to_weight = forward_heap.GetKey(to) ;
             }
-            auto toFar = [&to_weight,&weight_upper_bound]() {
-              return to_weight>weight_upper_bound ;
-            };
             auto alreadyThere = [&unpacked_nodes](NodeID node) {
-                return std::find(unpacked_nodes.begin(), unpacked_nodes.end(), node)!=unpacked_nodes.end() ;
+              return std::find(unpacked_nodes.begin(), unpacked_nodes.end(), node)!=unpacked_nodes.end() ;
             };
             auto alreadyInPath = [&nodes_from_paths](NodeID node) {
               return nodes_from_paths.find(node)!= nodes_from_paths.end() ;
             };
+#ifdef USE_THIS
+            auto toFar = [&to_weight,&weight_upper_bound]() {
+              return to_weight>weight_upper_bound ;
+            };
             //  Don't keep if we already have this node
             //  Don't keep if the node is in an already seen path
             //  Don't keep if the parent node is in an already seen path (avoids route forks of a single segment)
-            if( !toFar() && !alreadyThere(to) && !alreadyInPath(to) && !alreadyInPath(forward_heap.GetData(to).parent) )
+#endif
+            if( !alreadyThere(to) && !alreadyInPath(forward_heap.GetData(to).parent) ) //&& !toFar() && !alreadyInPath(to)  )
             {
                 unpacked_nodes.push_back(to);
                 unpacked_weigths.push_back(to_weight);
             }
+#ifdef USE_THIS
             PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
             std::for_each(path.begin(), path.end(), [&nodes_from_paths](PackedEdge &edge) {
               NodeID target;
               std::tie(std::ignore, target, std::ignore) = edge;
               nodes_from_paths.insert(target);
             });
+#endif
             //  Next step
             forward_heap.DeleteMin() ;
         }
+        std::cout << " Unpacked : " << unpacked_nodes.size() << std::endl ;
         return std::make_tuple(weight, std::move(unpacked_nodes), std::vector<EdgeID>(), std::move(unpacked_weigths));
     }
     //  Only go beyond this point for a route search

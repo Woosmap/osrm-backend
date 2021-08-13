@@ -103,7 +103,7 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     api::RouteAPI route_api{facade, parameters};
     std::vector<util::Coordinate>
         iso_nodes = algorithms.ForwardIsochroneSearch(
-        start_end_nodes.front(), phantom_weights, parameters.optimize, range,parameters.range_percent*range/100);
+        start_end_nodes.front(), phantom_weights, parameters.optimize, range,0);
 
     isochrone_api.MakeResponse(start_end_nodes.front().source_phantom, iso_nodes, result);
     return Status::Ok;
