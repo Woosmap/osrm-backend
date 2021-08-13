@@ -4,7 +4,6 @@
 #include "engine/routing_algorithms/routing_base_ch.hpp"
 #include "engine/routing_algorithms/routing_base_mld.hpp"
 #include "engine/polyline_compressor.hpp"
-#include <math.h>       /* cos, sin, atan2 */
 
 namespace osrm
 {
@@ -74,7 +73,7 @@ std::vector<util::Coordinate>
 forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
                        const DataFacade<ch::Algorithm> &/*facade*/,
                        const PhantomNodes &/*phantom_nodes*/,
-                       std::function<EdgeWeight(const PhantomNode &, bool)> /*phantomWeights*/,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> /*phantom_weights*/,
                        osrm::engine::api::BaseParameters::OptimizeType /*optimize*/,
                        EdgeWeight /*max_weight*/,
                        EdgeWeight /*min_weight*/)
@@ -82,7 +81,6 @@ forwardIsochroneSearch(SearchEngineData<ch::Algorithm> &/*engine_working_data*/,
     std::vector<util::Coordinate> raw_data;
     return raw_data;
 }
-
 
 template <>
 InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
@@ -103,25 +101,24 @@ InternalRouteResult directShortestPathSearch(SearchEngineData<mld::Algorithm> &e
     std::vector<NodeID> unpacked_nodes;
     std::vector<EdgeID> unpacked_edges;
     std::tie(weight, unpacked_nodes, unpacked_edges, std::ignore) = mld::search(engine_working_data,
-                                                                   facade,
-                                                                   forward_heap,
-                                                                   reverse_heap,
-                                                                   getWeightStrategy(facade,optimize),
-                                                                   DO_NOT_FORCE_LOOPS,
-                                                                   DO_NOT_FORCE_LOOPS,
-                                                                   INVALID_EDGE_WEIGHT,
-                                                                   0);
+                                                                                facade,
+                                                                                forward_heap,
+                                                                                reverse_heap,
+                                                                                getWeightStrategy(facade,optimize),
+                                                                                DO_NOT_FORCE_LOOPS,
+                                                                                DO_NOT_FORCE_LOOPS,
+                                                                                INVALID_EDGE_WEIGHT,
+                                                                                phantom_nodes);
 
     return extractRoute(facade, weight, phantom_nodes, unpacked_nodes, unpacked_edges);
 }
-
 
 template <>
 std::vector<util::Coordinate>
 forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
                        const DataFacade<mld::Algorithm> &facade,
                        const PhantomNodes &phantom_nodes,
-                       std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                       std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                        osrm::engine::api::BaseParameters::OptimizeType optimize,
                        EdgeWeight max_weight,
                        EdgeWeight min_weight)
@@ -135,13 +132,13 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
     if (source.IsValidForwardSource())
     {
         forward_heap.Insert(source.forward_segment_id.id,
-                            -phantomWeights(source,true),
+                            -phantom_weights(source,true),
                             source.forward_segment_id.id);
     }
     if (source.IsValidReverseSource())
     {
         forward_heap.Insert(source.reverse_segment_id.id,
-                            -phantomWeights(source,false),
+                            -phantom_weights(source,false),
                             source.reverse_segment_id.id);
     }
 

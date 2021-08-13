@@ -82,7 +82,7 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     std::vector<PhantomNodes> start_end_nodes;
     start_end_nodes.push_back( PhantomNodes{phantom_node_pairs.front().first,phantom_node_pairs.back().first} );
-    auto phantomWeights = [&parameters](const PhantomNode &phantom, bool forward) {
+    auto phantom_weights = [&parameters](const PhantomNode &phantom, bool forward) {
       switch( parameters.optimize) {
       case osrm::engine::api::BaseParameters::OptimizeType::Distance :
           return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
@@ -103,7 +103,7 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     api::RouteAPI route_api{facade, parameters};
     std::vector<util::Coordinate>
         iso_nodes = algorithms.ForwardIsochroneSearch(
-        start_end_nodes.front(), phantomWeights, parameters.optimize, range,parameters.range_percent*range/100);
+        start_end_nodes.front(), phantom_weights, parameters.optimize, range,parameters.range_percent*range/100);
 
     isochrone_api.MakeResponse(start_end_nodes.front().source_phantom, iso_nodes, result);
     return Status::Ok;

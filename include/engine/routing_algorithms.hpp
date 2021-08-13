@@ -40,7 +40,7 @@ class RoutingAlgorithmsInterface
 
     virtual std::vector<util::Coordinate>
     ForwardIsochroneSearch(const PhantomNodes &phantom_node_pair,
-                           std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                           std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                            osrm::engine::api::BaseParameters::OptimizeType optimize,
                            EdgeWeight max_weight,
                            EdgeWeight min_weight) const = 0;
@@ -114,7 +114,7 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
 
     std::vector<util::Coordinate>
     ForwardIsochroneSearch(const PhantomNodes &phantom_nodes,
-                           std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+                           std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
                            osrm::engine::api::BaseParameters::OptimizeType optimize,
                            EdgeWeight max_weight,
                            EdgeWeight min_weight) const final override;
@@ -230,13 +230,13 @@ InternalRouteResult RoutingAlgorithms<Algorithm>::DirectShortestPathSearch(
 template <typename Algorithm>
 std::vector<util::Coordinate> RoutingAlgorithms<Algorithm>::ForwardIsochroneSearch(
     const PhantomNodes &phantom_nodes,
-    std::function<EdgeWeight(const PhantomNode &, bool)> phantomWeights,
+    std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
     osrm::engine::api::BaseParameters::OptimizeType optimize,
     EdgeWeight max_weight,
     EdgeWeight min_weight) const
 {
     return routing_algorithms::forwardIsochroneSearch(
-        heaps, *facade, phantom_nodes, phantomWeights, optimize, max_weight,min_weight);
+        heaps, *facade, phantom_nodes, phantom_weights, optimize, max_weight,min_weight);
 }
 
 template <typename Algorithm>
