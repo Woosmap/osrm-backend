@@ -255,7 +255,7 @@ std::vector<util::Coordinate> almostConvexHull(const std::vector<util::Coordinat
             auto diff_bearing = next_bearing - prev_bearing;
             while(diff_bearing > 180) diff_bearing -= 360;
             while(diff_bearing < -180) diff_bearing += 360;
-            if (diff_bearing > -max_alpha)
+            if (diff_bearing >= -max_alpha)
                 break ;
             result.pop_back();
         }
