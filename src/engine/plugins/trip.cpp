@@ -296,6 +296,12 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     InternalRouteResult route =
         ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters, phantom_weights);
 
+    if( parameters.skip_roundtrip && parameters.roundtrip && route.segment_end_coordinates.size()>=trip_nodes.size() ) {
+        route.segment_end_coordinates.pop_back();
+        route.source_traversed_in_reverse.pop_back();
+        route.target_traversed_in_reverse.pop_back();
+        route.unpacked_path_segments.pop_back();
+    }
     // get api response
     const std::vector<std::vector<NodeID>> trips = {trip_nodes};
     const std::vector<InternalRouteResult> routes = {route};
