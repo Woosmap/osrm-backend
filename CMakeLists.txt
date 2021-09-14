@@ -520,9 +520,17 @@ if(ENABLE_MASON)
   # expat and bzip2 are used from mason rather than the system
   include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libosmium/include)
 else()
+  message(STATUS "MASON not used")
 
   find_package(Boost 1.54 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
   add_dependency_includes(${Boost_INCLUDE_DIRS})
+
+  find_package(CGAL REQUIRED COMPONENTS Core)
+  if (CGAL_FOUND)
+    message(STATUS "Using CGAL")
+  else()
+    message(FATAL_ERROR "This program requires the CGAL library, and will not be compiled.")
+  endif()
 
   find_package(TBB REQUIRED)
   add_dependency_includes(${TBB_INCLUDE_DIR})
@@ -614,7 +622,7 @@ target_link_libraries(osrm-extract osrm_extract ${Boost_PROGRAM_OPTIONS_LIBRARY}
 target_link_libraries(osrm-partition osrm_partition ${Boost_PROGRAM_OPTIONS_LIBRARY})
 target_link_libraries(osrm-customize osrm_customize ${Boost_PROGRAM_OPTIONS_LIBRARY})
 target_link_libraries(osrm-contract osrm_contract ${Boost_PROGRAM_OPTIONS_LIBRARY})
-target_link_libraries(osrm-routed osrm ${Boost_PROGRAM_OPTIONS_LIBRARY} ${OPTIONAL_SOCKET_LIBS} ${ZLIB_LIBRARY})
+target_link_libraries(osrm-routed osrm ${Boost_PROGRAM_OPTIONS_LIBRARY} ${OPTIONAL_SOCKET_LIBS} ${ZLIB_LIBRARY} CGAL::CGAL)
 
 set(EXTRACTOR_LIBRARIES
     ${BZIP2_LIBRARIES}
@@ -860,6 +868,6 @@ if (ENABLE_NODE_BINDINGS)
     endif()
     list(APPEND sources ${filename})
   endforeach()
-  add_library(check-headers STATIC EXCLUDE_FROM_ALL ${sources} include/engine/api/isochrone_parameters.hpp include/engine/plugins/isochrone.hpp include/osrm/isochrone_parameters.hpp include/server/api/isochrone_parameter_grammar.hpp include/server/service/isochrone_service.hpp include/engine/routing_algorithms/isochrone_nodes.hpp include/engine/api/isochrone_api.hpp)
+  add_library(check-headers STATIC EXCLUDE_FROM_ALL ${sources} include/engine/api/isochrone_parameters.hpp include/engine/plugins/isochrone.hpp include/osrm/isochrone_parameters.hpp include/server/api/isochrone_parameter_grammar.hpp include/server/service/isochrone_service.hpp include/engine/routing_algorithms/isochrone_nodes.hpp include/engine/api/isochrone_api.hpp include/engine/concaveman.hpp)
   set_target_properties(check-headers PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${check_headers_dir})
 endif()

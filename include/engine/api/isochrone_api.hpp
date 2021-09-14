@@ -86,7 +86,7 @@ class IsochroneAPI final : public RouteAPI
         }
 
         // Fill geometry
-        const std::vector<util::Coordinate> &overview = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview(points,(100-parameters.convexity_value) *180/100) : points ;
+        const std::vector<util::Coordinate> &overview = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview_internal(points,(100-parameters.convexity_value) *180/100) : points ;
         mapbox::util::variant<flatbuffers::Offset<flatbuffers::String>,
             flatbuffers::Offset<flatbuffers::Vector<const fbresult::Position *>>>
             geometry;
@@ -153,7 +153,7 @@ class IsochroneAPI final : public RouteAPI
         if (!parameters.skip_waypoints)
             response.values["source"] = MakeWaypoint(source);
 
-        const std::vector<util::Coordinate> &geometry = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview(points,(100-parameters.convexity_value) *180/100) : points ;
+        const std::vector<util::Coordinate> &geometry = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview_cgal(points,(100-parameters.convexity_value) *180/100) : points ;
         boost::optional<util::json::Value> json_geometry;
         switch( parameters.geometries ) {
         case RouteParameters::GeometriesType::Polyline :

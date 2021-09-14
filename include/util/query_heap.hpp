@@ -375,6 +375,13 @@ class QueryHeap
         heap.increase(heapNode.handle, std::make_pair(heapNode.weight, (*heapNode.handle).second));
     }
 
+    auto nodesBegin() {
+        return inserted_nodes.begin() ;
+    }
+    auto nodesEnd() {
+        return inserted_nodes.end() ;
+    }
+
   private:
     std::vector<HeapNode> inserted_nodes;
     HeapContainer heap;

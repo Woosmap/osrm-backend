@@ -399,6 +399,33 @@ using UnpackedEdges = std::vector<EdgeID>;
 using UnpackedWeigths = std::vector<EdgeWeight>;
 using UnpackedPath = std::tuple<EdgeWeight, UnpackedNodes, UnpackedEdges, UnpackedWeigths>;
 
+template <typename T>
+struct Either {
+  public :
+    static Either Left(T v) {
+        return Either( true , v ) ;
+    }
+    static Either Right(T v) {
+        return Either( false , v ) ;
+    }
+    bool isLeft() { return isLeft_ ; }
+    bool isRight() { return !isLeft_ ; }
+    T left() {
+        return isLeft_ ? value_  : throw std::exception() ;
+    }
+    T get() {
+        return !isLeft_ ? value_  : throw std::exception() ;
+    }
+    boost::optional<T> toOption() {
+        return isLeft_ ? boost::optional<T>{} : boost::optional<T>(value_) ;
+    }
+  private :
+    Either() { isLeft_ = false ; value_ = 0 ; }
+    Either(bool is_left, T v) { isLeft_ = is_left ; value_ = v ; }
+    bool isLeft_ ;
+    T value_ ;
+};
+
 template <typename Algorithm, typename... Args>
 UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                     const DataFacade<Algorithm> &facade,
@@ -474,16 +501,377 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
         if( reverse_search )
             return std::make_tuple(INVALID_EDGE_WEIGHT, std::vector<NodeID>(), std::vector<EdgeID>(), std::vector<EdgeWeight>());
 
+        typedef std::pair<util::Coordinate,util::Coordinate> Segment ;
+        const auto copy = [](auto &vector, const auto range) {
+          vector.resize(range.size());
+          std::copy(range.begin(), range.end(), vector.begin());
+        };
+        auto nodeCoordinates = [&facade,&copy](const NodeID node) -> util::Coordinate {
+          const auto geometry_index = facade.GetGeometryIndex(node);
+          std::vector<NodeID> id_vector;
+          copy(id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id));
+          return facade.GetCoordinateOfNode(id_vector[1]) ;
+        };
+        //  Two segments seg1(p1,q1) and seg2(p2,q2) intersect if and only if one of the following two conditions is verified
+        //  1. General Case:
+        //  – (p1, q1, p2) and (p1, q1, q2) have different orientations and
+        //  – (p2, q2, p1) and (p2, q2, q1) have different orientations
+        //  2. Special Case
+        //  – (p1, q1, p2), (p1, q1, q2), (p2, q2, p1), and (p2, q2, q1) are all collinear and
+        //  – the x-projections of (p1, q1) and (p2, q2) intersect
+        //  – the y-projections of (p1, q1) and (p2, q2) intersect.
+#ifdef INTERSECTS
+        auto intersect = [](const Segment& seg1, const Segment& seg2) -> int {
+            // Given three colinear points p, q, r, the function checks if
+            // point q lies on line segment 'pr'
+            auto onSegment = [](const util::Coordinate& p, const util::Coordinate& q, const util::Coordinate& r) -> bool {
+                if (q.lon <= std::max(p.lon, r.lon) && q.lon >= std::min(p.lon, r.lon) &&
+                    q.lat <= std::max(p.lat, r.lat) && q.lat >= std::min(p.lat, r.lat))
+                    return true;
+                return false;
+            };
+            // To find orientation of ordered triplet (p, q, r).
+            // The function returns following values
+            //  0 --> p, q and r are colinear
+            //  1 --> Clockwise
+            // -1 --> Counterclockwise
+            auto orientation = [](const util::Coordinate&  p, const util::Coordinate&  q, const util::Coordinate&  r) -> int {
+                // See https://www.geeksforgeeks.org/orientation-3-ordered-points/
+                // for details of below formula.
+                std::int32_t val = static_cast<std::int32_t>(q.lat - p.lat) * static_cast<std::int32_t>(r.lon - q.lon) -
+                    static_cast<std::int32_t>(q.lon - p.lon) * static_cast<std::int32_t>(r.lat - q.lat);
+                return val>0 ? 1 :  //  clock wise
+                       val<0 ? -1 : //  counterclock wise
+                               0 ;  //  Colinear
+            };
+
+            // Find the four orientations needed for general and special cases
+            int o1 = orientation(seg1.first, seg1.second, seg2.first);
+            int o2 = orientation(seg1.first, seg1.second, seg2.second);
+            int o3 = orientation(seg2.first, seg2.second, seg1.first);
+            int o4 = orientation(seg2.first, seg2.second, seg1.second);
+            // General case :
+            // (o1,o2)==(1,-1) : seg2 traversing seg1 from right to left (inside => outside)
+            // (o1,o2)==(-1,1) : seg2 traversing seg1 from left to right (outside => inside)
+            if (o1 != o2 && o3 != o4)
+                  return -o1;   //  1 : entering ; -1 : exiting
+            // Special Cases
+            // p1, q1 and p2 are colinear and p2 lies on segment seg1
+            // o2==1  : from seg1 to inside (return 2)
+            // o2==-1 : from seg1 to outside (return -2)
+            if (o1 == 0 && onSegment(seg1.first, seg2.first, seg1.second))
+                return 2*o2;
+            // p1, q1 and q2 are colinear and q2 lies on segment seg1
+            // o1==1  : from inside to seg1 (return -3)
+            // o1==-1 : from outside to seg1 (return 3)
+            if (o2 == 0 && onSegment(seg1.first, seg2.second, seg1.second))
+                return -3*o1;
+            // p2, q2 and p1 are colinear and p1 lies on segment seg2
+            // o4==1  : seg2 traversing seg1 from right to left while touching p1 (inside => outside)
+            // o4==-1 : seg2 traversing seg1 from left to right while touching p1 (outside => inside)
+            if (o3 == 0 && onSegment(seg2.first, seg1.first, seg2.second))
+                return -o4;   //  1 : entering ; -1 : exiting
+            // p2, q2 and q1 are colinear and q1 lies on segment seg2
+            // o3==1  : seg2 traversing seg1 from right to left while touching q1 (outside => inside)
+            // o3==-1 : seg2 traversing seg1 from left to right while touching q1 (inside => outside)
+            if (o4 == 0 && onSegment(seg2.first, seg1.second, seg2.second))
+                return o3;   //  1 : entering ; -1 : exiting
+
+            return 0; // Doesn't fall in any of the above cases
+        };
+        auto intersects = [&](const std::vector<NodeID>& nodes, const std::pair<NodeID,NodeID>& edge) -> boost::optional<Either<NodeID>>{
+            if( nodes.empty() )
+                return boost::optional<Either<NodeID>>{} ;
+            const auto c = nodeCoordinates(edge.second);
+            Segment seg = std::make_pair(nodeCoordinates(edge.first), c ) ;
+            auto prev = nodes.front() ;
+            for( auto cur : nodes) {
+                if( cur==prev )    // No check on last segment : Uturn
+                    continue ;
+                auto crossing = intersect( std::make_pair(nodeCoordinates(prev), nodeCoordinates(cur) ), seg ) ;
+                if( crossing==1 ) { //  Entering into the polygon (polyline)
+                    std::cout << "X>:" << std::setprecision(7 ) << toFloating(c.lon) << ' ' << toFloating(c.lat) << ':' << edge.second << std::endl ;
+                    return Either<NodeID>::Right(cur);
+                }
+                if( crossing==-1 ) { //  Exiting from the polygon (polyline)
+                    std::cout << "X<:" << std::setprecision(7 ) << toFloating(c.lon) << ' ' << toFloating(c.lat) << ':' << edge.second << std::endl ;
+                    return Either<NodeID>::Left(cur);
+                }
+                if( crossing!=0 ) {
+                    std::cout << "X(" << crossing << "):" << std::setprecision(7 ) << toFloating(c.lon) << ' ' << toFloating(c.lat) << ':' << edge.second << std::endl ;
+                }
+                prev = cur ;
+            }
+          return boost::optional<Either<NodeID>>{} ;
+        };
+#endif
         //  We perform only forward search when looking for isochrones
         std::vector<NodeID> unpacked_nodes;
+        std::vector<NodeID> forward_nodes;
+        std::set<NodeID> dead_ends;
         std::vector<EdgeWeight> unpacked_weigths;
-        std::set<NodeID> nodes_from_paths;
+        std::set<PackedEdge> edges_from_paths;
+#ifdef TRIP_LEFT_TURNS
+        /* Get the western node
+         * Get the northest node from previous => 1st edge
+         * From there on : find the turn-left most edge from current node, go through that edge
+        */
+        //  western node
+        auto start_ = std::min_element( forward_heap.nodesBegin(), forward_heap.nodesEnd(), [&](const auto& d1, const auto& d2 ){
+            /*auto isDeadEnd = [&facade,&forward_heap](const NodeID node ){
+              const auto edgeRange = facade.GetAdjacentEdgeRange(node) ;
+              auto nb_adjacents = 0 ;
+              for (const auto edge : edgeRange) {
+                  const auto to = facade.GetTarget(edge);
+                  if( forward_heap.WasInserted(to) )
+                      nb_adjacents += 1 ;
+              }
+              return nb_adjacents<2 ;
+            };
+            if( isDeadEnd(d1.node) )
+                return false ;
+            if( isDeadEnd(d2.node) )
+                return true ;*/
+            const util::Coordinate& coord1 = nodeCoordinates( d1.node ) ;
+            const util::Coordinate& coord2 = nodeCoordinates( d2.node ) ;
+            if( coord1.lon==coord2.lon )
+                return coord1.lat<coord2.lat ;
+            return coord1.lon<coord2.lon ;
+        }) ;
+        //  If no min element found => early return of empty vectors
+        if( start_ == forward_heap.nodesEnd() )
+            return std::make_tuple(weight, std::move(unpacked_nodes), std::vector<EdgeID>(), std::move(unpacked_weigths));
+        using namespace osrm::util::coordinate_calculation;
+        //  Coordinates of western node
+        auto start_node = start_->node ;
+        auto cur_node = start_node ;
+        auto prev_node = cur_node ;
+        //auto onUturn = false ;
+        do {
+            std::vector<std::pair<NodeID,int>> candidates;
+            std::vector<std::pair<NodeID,int>> allCandidates;
+            {
+                std::cout << std::setprecision(7) << "LINESTRING(" ;
+                std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](const auto& node){
+                  const auto c = nodeCoordinates(node);
+                  std::cout << toFloating(c.lon) << ' ' << toFloating(c.lat) << ',' ;
+                });
+                std::cout << ')' << std::endl ;
+                const auto c = nodeCoordinates(cur_node);
+                std::cout << std::setprecision(7 ) << toFloating(c.lon) << ' ' << toFloating(c.lat) << ':' << cur_node << std::endl ;
+            }
+            auto fillBorderEdges = [&](auto node){ // Boundary edges
+              const auto edgeRange = facade.GetAdjacentEdgeRange(node) ;
+              for (const auto edge : edgeRange) {
+                  const auto to = facade.GetTarget(edge);
+                  allCandidates.push_back(std::make_pair(to,0)) ;
+                  if( !forward_heap.WasInserted(to) )
+                      continue ;
+                  candidates.push_back(std::make_pair(to,0)) ;
+#ifdef CHECK_CANDIDATES
+                  if( std::find( dead_ends.begin(), dead_ends.end(), to ) != dead_ends.end() )
+                      continue ;
+                  boost::optional<Either<NodeID>> crossing = intersects( unpacked_nodes, std::make_pair(cur_node,to)) ;
+                  // Not crossing : it's a candidate
+                  if( !crossing )
+                      candidates.push_back(std::make_pair(to,0));
+                  // If crossing from outside to inside => candidate but to shorten the current path
+                  else if( crossing && crossing->isRight() ) {
+                      auto cross_node = crossing->get() ;
+                      candidates.push_back(std::make_pair(to, cross_node ) );
+                      //   If it crosses at the end of current path, we need to distinguish between
+                      // Uturn or crossing to inside : insert cur_node will fool next test
+                      //if( cross_node==unpacked_nodes.back() )
+                      //    forward_nodes.push_back( cur_node ) ;
+                  } else if( crossing && crossing->isLeft()) {    // We're crossing from inside to outside
+                      if( to == forward_nodes.back() )    // last node of forward path => possibly a Uturn
+                          candidates.push_back(std::make_pair(to, crossing->left()));
+                      else
+                      if( to == forward_nodes.front() )    // back to start of path => stop searching
+                          candidates.push_back(std::make_pair(to, crossing->left()));
+                  }
+#endif
+              }
+            };
+            fillBorderEdges(cur_node) ;
+            const util::Coordinate source = nodeCoordinates(cur_node);
+            auto fixAngle = [](double angle) {
+              while(angle > 180) angle -= 360;
+              while(angle <= -180) angle += 360;
+              return angle ;
+            };
+            auto sortCandidates = [&](std::vector<std::pair<NodeID,int>>& positions) {
+              //auto prev_node = unpacked_nodes.back() ;
+              const util::Coordinate last = nodeCoordinates(prev_node);
+              auto angle_start = fixAngle( bearing(last, source) ) ;
+              std::stable_sort(positions.begin(), positions.end(), [&](const auto& a, const auto& b) {
+                if( a.first== prev_node)
+                    return false ;
+                if( b.first== prev_node)
+                    return true ;
+                bool already_a = std::find( unpacked_nodes.begin(), unpacked_nodes.end(), a.first )!=unpacked_nodes.end() ;
+                bool already_b = std::find( unpacked_nodes.begin(), unpacked_nodes.end(), b.first )!=unpacked_nodes.end() ;
+                if( already_a && !already_b )
+                    return false ;
+                if( !already_a && already_b )
+                    return true ;
+                const auto ca = nodeCoordinates(a.first);
+                const auto cb = nodeCoordinates(b.first);
+                auto angle_a = fixAngle( bearing(source, ca) ) ;
+                auto angle_b = fixAngle( bearing(source, cb) ) ;
+                auto dev_a = fixAngle( angle_a - angle_start ) ;
+                auto dev_b = fixAngle( angle_b - angle_start ) ;
+                if (dev_a == dev_b)
+                    return haversineDistance(source, ca) < haversineDistance(source, cb);
+                return dev_a < dev_b;
+              });
+            };
+            auto printBoundaries = [&](std::vector<std::pair<NodeID,int>>& positions) {
+              const util::Coordinate last = nodeCoordinates(prev_node);
+              auto angle_start = fixAngle( bearing(last, source) ) ;
+              std::for_each( positions.begin(), positions.end(), [&](const auto pos){
+                const auto c = nodeCoordinates(pos.first);
+                std::cout << std::setprecision(7) << "POINT(" << toFloating(c.lon) << ' ' << toFloating(c.lat) << ")," ;
+              });
+              std::for_each( positions.begin(), positions.end(), [&](const auto pos){
+                const auto c = nodeCoordinates(pos.first);
+                auto dir = fixAngle( bearing(source, c) ) ;
+                auto angle = fixAngle( dir - angle_start) ;
+                std::cout << std::setprecision(4) << pos.first << ':' << angle << ',' ;
+              });
+              std::cout << std::endl ;
+            };
+            //  No candidates found right at the beginning => search no more (should not happen!!!)
+            if( candidates.empty() ) //&& forward_nodes.empty() )
+                break ;
+            if( !candidates.empty() ) {//&& !forward_nodes.empty() ) {
+                sortCandidates( candidates ) ;
+                printBoundaries( candidates ) ;
+                sortCandidates( allCandidates ) ;
+                printBoundaries( allCandidates ) ;
+                //NodeID to = candidates.front().first ;
+#ifdef CHECK_UTURNS
+                //  Check the case of a Uturn
+                if( to==forward_nodes.back() ) {
+                    if( !onUturn)
+                        unpacked_nodes.push_back( cur_node ) ;
+                    onUturn = true ;
+                    dead_ends.insert(cur_node);
+                    prev_node = cur_node ;
+                    cur_node = to ;
+                    forward_nodes.pop_back() ;
+                    // Don't add to the path while in the Uturn
+                    continue ;
+                }
+                //  Check if the candidate crosses the existing path (from outside to inside) => shorten the current pass
+                NodeID crossNode = candidates.front().second ;
+                if( crossNode ) {// Path is making a loop to re-enter itself => cut-off the loop trip
+                    auto shortenPath = [](std::vector<NodeID>& path, NodeID node) {
+                      auto cross = std::find(path.begin(), path.end(), node);
+                      if (cross != path.end())
+                          path.erase(cross, path.end());
+                    };
+                    shortenPath( unpacked_nodes, crossNode ) ;
+                    shortenPath( forward_nodes, crossNode ) ;
+                    prev_node = forward_nodes.back() ;
+                    candidates.clear();
+                    onUturn = false ;
+                    continue;
+                }
+#endif
+            }
+            //  No candidates, only possibility : single target that crosses path from the right (inside => outside)
+            //  Make a Uturn
+#ifdef CANDIATES_EMPTY
+            if( candidates.empty() ) {
+                if( !onUturn ) {
+                    if( !unpacked_nodes.empty() ) {
+                        boost::optional<Either<NodeID>> crossing = intersects(unpacked_nodes, std::make_pair(unpacked_nodes.back(), cur_node));
+                        if (crossing) {
+                            auto crossNode = crossing->isRight() ? crossing->get() : crossing->left();
+                            auto shortenPath = [](std::vector<NodeID> &path, NodeID node) {
+                              auto cross = std::find(path.begin(), path.end(), node);
+                              if (cross != path.end())
+                                  path.erase(cross, path.end());
+                            };
+                            shortenPath(unpacked_nodes, crossNode);
+                        }
+                    }
+                    unpacked_nodes.push_back(cur_node);
+                }
+                onUturn = true ;
+                dead_ends.insert(cur_node);
+                prev_node = cur_node ;
+                cur_node = forward_nodes.back() ;
+                forward_nodes.pop_back() ;
+
+                //  If we had made our way back till the beginning => no path could be found (should not happen!!!!)
+                if( forward_nodes.empty() )
+                    break ;
+                if( forward_nodes.size()==1 ) {
+                    forward_nodes.clear() ;
+                    unpacked_nodes.clear() ;
+                }
+                //  There's still nodes to explore
+                continue ;
+            }
+            if( forward_nodes.empty() ) {
+                std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
+                  const auto ca = nodeCoordinates(a.first);
+                  const auto cb = nodeCoordinates(b.first);
+                  auto bearing_a = bearing(source, ca) ;
+                  auto bearing_b = bearing(source, cb) ;
+                  if (bearing_a == bearing_b)
+                      return haversineDistance(source, ca) < haversineDistance(source, cb);
+                  return bearing_a < bearing_b;
+                });
+            } else {
+                if( candidates.size()==1 && forward_nodes.size()==2 ) {
+                    unpacked_nodes.erase( unpacked_nodes.begin() ) ;
+                    forward_nodes.erase( forward_nodes.begin() ) ;
+                    unpacked_weigths.erase( unpacked_weigths.begin() ) ;
+                }
+            };
+            if( !onUturn ) {
+                if( !unpacked_nodes.empty() ) {
+                    boost::optional<Either<NodeID>> crossing = intersects(unpacked_nodes, std::make_pair(unpacked_nodes.back(), cur_node));
+                    if (crossing) {
+                        auto crossNode = crossing->isRight() ? crossing->get() : crossing->left();
+                        auto shortenPath = [](std::vector<NodeID> &path, NodeID node) {
+                            auto cross = std::find(path.begin(), path.end(), node);
+                            if (cross != path.end())
+                                path.erase(cross, path.end());
+                        };
+                        shortenPath(unpacked_nodes, crossNode);
+                    }
+                }
+                unpacked_nodes.push_back( cur_node ) ;
+            }
+            else
+                dead_ends.insert(cur_node);
+            onUturn = false ;
+#endif
+            unpacked_nodes.push_back( cur_node ) ;
+            forward_nodes.push_back( cur_node ) ;
+            start_node = forward_nodes.front() ;
+            prev_node = forward_nodes.back() ;
+            unpacked_weigths.push_back( 0 ) ;
+            cur_node = candidates.front().first ;
+        } while( cur_node!=start_node ) ;
+#endif
+
+        std::for_each( forward_heap.nodesBegin(), forward_heap.nodesEnd(), [&](const auto& d){
+          unpacked_nodes.push_back( d.node ) ;
+          unpacked_weigths.push_back( d.weight ) ;
+        });
         //  Collect all the farthest nodes from all the current explored paths
         //  The node we want is the one before the last, as the last node is already beyond the limit
         //  We filter
         //  * the duplicates
         //  * the nodes included in an already explored path
-        std::cout << "Number of nodes : " << forward_heap.Size() ;
+
+        std::cout << "Number of nodes : " << forward_heap.Size() << std::endl ;
+        std::cout << "GEOMETRYCOLLECTION(" << std::endl ;
         while (forward_heap.Size()>0 ){
             NodeID to = forward_heap.Min() ;
             auto to_weight = forward_heap.MinKey() ;
@@ -492,36 +880,75 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                 to = forward_heap.GetData(to).parent ;
                 to_weight = forward_heap.GetKey(to) ;
             }
+#ifdef USE_THIS
             auto alreadyThere = [&unpacked_nodes](NodeID node) {
               return std::find(unpacked_nodes.begin(), unpacked_nodes.end(), node)!=unpacked_nodes.end() ;
             };
             auto alreadyInPath = [&nodes_from_paths](NodeID node) {
               return nodes_from_paths.find(node)!= nodes_from_paths.end() ;
             };
-#ifdef USE_THIS
             auto toFar = [&to_weight,&weight_upper_bound]() {
               return to_weight>weight_upper_bound ;
             };
             //  Don't keep if we already have this node
             //  Don't keep if the node is in an already seen path
             //  Don't keep if the parent node is in an already seen path (avoids route forks of a single segment)
-#endif
+
             if( !alreadyThere(to) && !alreadyInPath(forward_heap.GetData(to).parent) ) //&& !toFar() && !alreadyInPath(to)  )
             {
                 unpacked_nodes.push_back(to);
                 unpacked_weigths.push_back(to_weight);
             }
-#ifdef USE_THIS
-            PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
-            std::for_each(path.begin(), path.end(), [&nodes_from_paths](PackedEdge &edge) {
-              NodeID target;
-              std::tie(std::ignore, target, std::ignore) = edge;
-              nodes_from_paths.insert(target);
-            });
 #endif
+#ifndef USE_THIS
+            auto alreadyInPath = [&edges_from_paths](PackedEdge& edge) {
+              return std::find_if(edges_from_paths.begin(), edges_from_paths.end(), [&](auto& e){
+                    NodeID from0, from1, to0, to1 ;
+                    std::tie(from1, to1, std::ignore) = edge;
+                    std::tie(from0, to0, std::ignore) = e;
+                    return from1==from0 && to1==to0 ;
+                })!= edges_from_paths.end() ;
+            };
+            PackedPath path = retrievePackedPathFromSingleHeap<FORWARD_DIRECTION>(forward_heap, to);
+            std::cout << "LINESTRING(" ;
+            auto separator = '\0' ;
+            auto nbPoints = 0 ;
+            std::for_each(path.begin(), path.end(), [&](PackedEdge &edge) {
+              NodeID target;
+              if( !alreadyInPath(edge) || nbPoints<2 ) {
+                  std::tie(std::ignore, target, std::ignore) = edge;
+                  const auto geometry_index = facade.GetGeometryIndex(target);
+                  const auto copy = [](auto &vector, const auto range) {
+                    vector.resize(range.size());
+                    std::copy(range.begin(), range.end(), vector.begin());
+                  };
+                  std::vector<NodeID> id_vector;
+                  copy(id_vector, facade.GetUncompressedForwardGeometry(geometry_index.id));
+                  util::Coordinate coord = facade.GetCoordinateOfNode(id_vector[1]) ;
+                  if( separator )
+                      std::cout << separator ;
+                  std::cout << toFloating(coord.lon) << ' ' << toFloating(coord.lat) ;
+                  separator = ',' ;
+                  nbPoints += 1 ;
+              }
+              edges_from_paths.insert(edge);
+            });
+            std::cout << ")," << std::endl ;
             //  Next step
             forward_heap.DeleteMin() ;
         }
+        std::cout << "POLYGON(" ;
+        auto separator = '\0' ;
+        std::for_each( unpacked_nodes.begin(), unpacked_nodes.end(), [&](const auto d){
+            const util::Coordinate coord = nodeCoordinates( d ) ;
+            if( separator )
+                std::cout << separator ;
+            std::cout << toFloating(coord.lon) << ' ' << toFloating(coord.lat) ;
+            separator = ',' ;
+        });
+        std::cout << ")" << std::endl ;
+        std::cout << ")" << std::endl ;
+#endif
         std::cout << " Unpacked : " << unpacked_nodes.size() << std::endl ;
         return std::make_tuple(weight, std::move(unpacked_nodes), std::vector<EdgeID>(), std::move(unpacked_weigths));
     }
