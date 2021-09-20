@@ -76,6 +76,9 @@ BOOST_AUTO_TEST_CASE(invalid_route_urls)
     BOOST_CHECK_EQUAL(testInvalidOptions<RouteParameters>("1,2;3,4?annotations=true,false"), 24UL);
     BOOST_CHECK_EQUAL(
         testInvalidOptions<RouteParameters>("1,2;3,4?annotations=&overview=simplified"), 20UL);
+    BOOST_CHECK_EQUAL(testInvalidOptions<RouteParameters>("1,2;3,4?optimize="), 17UL);
+    BOOST_CHECK_EQUAL(testInvalidOptions<RouteParameters>("1,2;3,4?optimize=truth"), 17UL);
+    BOOST_CHECK_EQUAL(testInvalidOptions<RouteParameters>("1,2;3,4?optimiz=true"), 8UL);
 }
 
 BOOST_AUTO_TEST_CASE(invalid_table_urls)
@@ -143,6 +146,7 @@ BOOST_AUTO_TEST_CASE(valid_route_urls)
     BOOST_CHECK_EQUAL(reference_1.annotations, result_1->annotations);
     BOOST_CHECK_EQUAL(reference_1.overview, result_1->overview);
     BOOST_CHECK_EQUAL(reference_1.continue_straight, result_1->continue_straight);
+    BOOST_CHECK_EQUAL(reference_1.optimize, result_1->optimize);
     CHECK_EQUAL_RANGE(reference_1.bearings, result_1->bearings);
     CHECK_EQUAL_RANGE(reference_1.radiuses, result_1->radiuses);
     CHECK_EQUAL_RANGE(reference_1.approaches, result_1->approaches);
@@ -180,9 +184,10 @@ BOOST_AUTO_TEST_CASE(valid_route_urls)
                                 RouteParameters::OverviewType::False,
                                 true};
     reference_3.coordinates = coords_1;
+    reference_3.optimize = RouteParameters::OptimizeType::Distance ;
     auto result_3 = api::parseParameters<engine::api::RouteParameters>(
         "1,2;3,4?steps=false&alternatives=false&geometries=geojson&overview=false&continue_"
-        "straight=true");
+        "straight=true&optimize=distance");
     BOOST_CHECK(result_3);
     BOOST_CHECK_EQUAL(reference_3.steps, result_3->steps);
     BOOST_CHECK_EQUAL(reference_3.alternatives, result_3->alternatives);
@@ -191,6 +196,7 @@ BOOST_AUTO_TEST_CASE(valid_route_urls)
     BOOST_CHECK_EQUAL(reference_3.annotations, result_3->annotations);
     BOOST_CHECK_EQUAL(reference_3.overview, result_3->overview);
     BOOST_CHECK_EQUAL(reference_3.continue_straight, result_3->continue_straight);
+    BOOST_CHECK_EQUAL(reference_3.optimize, result_3->optimize);
     CHECK_EQUAL_RANGE(reference_3.bearings, result_3->bearings);
     CHECK_EQUAL_RANGE(reference_3.radiuses, result_3->radiuses);
     CHECK_EQUAL_RANGE(reference_3.approaches, result_3->approaches);
@@ -778,6 +784,12 @@ BOOST_AUTO_TEST_CASE(valid_trip_urls)
     auto param_fse_nr_ =
         parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=false");
     BOOST_CHECK(param_fse_nr_->IsValid());
+    auto param_fse_r_sk =
+        parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=true&skip_roundtrip=true");
+    BOOST_CHECK(param_fse_r_sk->IsValid());
+    auto param_fse_r_nsk =
+        parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=true&skip_roundtrip=false");
+    BOOST_CHECK(param_fse_r_nsk->IsValid());
     auto param_fs_r = parseParameters<TripParameters>("1,2;3,4?source=first&roundtrip=true");
     BOOST_CHECK(param_fs_r->IsValid());
     auto param_fs_nr = parseParameters<TripParameters>("1,2;3,4?source=first&roundtrip=false");
@@ -796,6 +808,8 @@ BOOST_AUTO_TEST_CASE(valid_trip_urls)
     BOOST_CHECK_EQUAL(param_fail_1, 15UL);
     auto param_fail_2 = testInvalidOptions<TripParameters>("1,2;3,4?source=first&destination=nah");
     BOOST_CHECK_EQUAL(param_fail_2, 33UL);
+    auto param_fail_3 = testInvalidOptions<TripParameters>("1,2;3,4?source=first&destination=last&skip_roundtrip=bla");
+    BOOST_CHECK_EQUAL(param_fail_3, 53UL);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
