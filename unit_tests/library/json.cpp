@@ -6,7 +6,6 @@
 #include "engine/api/json_factory.hpp"
 #include "osrm/coordinate.hpp"
 
-#include <iterator>
 #include <vector>
 
 using namespace osrm;
