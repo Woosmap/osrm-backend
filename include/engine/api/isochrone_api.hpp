@@ -86,7 +86,10 @@ class IsochroneAPI final : public RouteAPI
         }
 
         // Fill geometry
-        const std::vector<util::Coordinate> &overview = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview_internal(points,(100-parameters.convexity_value) *180/100) : points ;
+        const std::vector<util::Coordinate> &overview = guidance::reduceOverview(
+            points,
+            parameters.convexity_value,
+            parameters.overview == RouteParameters::OverviewType::Simplified) ;
         mapbox::util::variant<flatbuffers::Offset<flatbuffers::String>,
             flatbuffers::Offset<flatbuffers::Vector<const fbresult::Position *>>>
             geometry;
@@ -153,24 +156,27 @@ class IsochroneAPI final : public RouteAPI
         if (!parameters.skip_waypoints)
             response.values["source"] = MakeWaypoint(source);
 
-        const std::vector<util::Coordinate> &geometry = parameters.overview == RouteParameters::OverviewType::Simplified ? guidance::reduceOverview_cgal(points,(100-parameters.convexity_value) *180/100) : points ;
+        const std::vector<util::Coordinate> &overview = guidance::reduceOverview(
+            points,
+            parameters.convexity_value,
+            parameters.overview == RouteParameters::OverviewType::Simplified) ;
         boost::optional<util::json::Value> json_geometry;
         switch( parameters.geometries ) {
         case RouteParameters::GeometriesType::Polyline :
-            json_geometry = json::makePolyline<100000>(geometry.begin(), geometry.end());
+            json_geometry = json::makePolyline<100000>(overview.begin(), overview.end());
             break ;
         case RouteParameters::GeometriesType::Polyline6 :
-            json_geometry = json::makePolyline<1000000>(geometry.begin(), geometry.end());
+            json_geometry = json::makePolyline<1000000>(overview.begin(), overview.end());
             break ;
         case RouteParameters::GeometriesType::GeoJSON :
-            json_geometry = json::makeGeoJSONGeometry(geometry.begin(), geometry.end());
+            json_geometry = json::makeGeoJSONGeometry(overview.begin(), overview.end());
             break ;
         }
 
         util::json::Object properties;
         if (json_geometry)
         {
-            properties.values["geometry"] = *std::move(json_geometry);
+            properties.values["overview"] = *std::move(json_geometry);
         }
         switch( parameters.optimize ) {
         case IsochroneParameters::OptimizeType::Distance :

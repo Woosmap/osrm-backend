@@ -205,8 +205,6 @@ forwardIsochroneSearch(SearchEngineData<mld::Algorithm> &engine_working_data,
       using namespace osrm::util::coordinate_calculation;
       return bearing(ca,source)<bearing(cb,source) ;
     });
-    if( !coords.empty())
-        coords.push_back( coords.front() ) ;
 
     return coords ;
 }

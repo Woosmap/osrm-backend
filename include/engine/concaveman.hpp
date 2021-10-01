@@ -20,15 +20,10 @@
 #include <set>
 #include <queue>
 #include <assert.h>
+#include "util/web_mercator.hpp"
 
 //#define DEBUG // uncomment to dump debug info to screen
 //#define DEBUG_2 // uncomment to dump second-level debug info to screen
-
-/*
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}*/
 
 
 template<class T> class compare_first {
@@ -210,7 +205,7 @@ public:
 
         m_bounds = updated_bounds(bounds);
         if (m_children.size() < MAX_CHILDREN) {
-            auto r = make_unique<type>(data, bounds);
+            auto r = std::make_unique<type>(data, bounds);
             m_children.push_back(std::move(r));
             return;
         }
@@ -232,7 +227,7 @@ public:
             return;
         }
 
-        auto leaf = make_unique<type>(best_child.get().data(),
+        auto leaf = std::make_unique<type>(best_child.get().data(),
             best_child.get().bounds());
         best_child.get().m_is_leaf = false;
         best_child.get().m_data = data_type();
@@ -558,7 +553,7 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
 #endif
 
     // exit if hull includes all points already
-    if (hull.size() == points.size()) {
+    if (concavity>=100 || hull.size() == points.size()) {
         //std::vector<point_type> res;
         //for (auto &i : hull) res.push_back(points[i]);
         return hull;
@@ -589,15 +584,14 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
 
     // loops through the hull?  why?
 #ifdef DEBUG
-    std::cout << "Starting hull: ";
-#endif
+    std::cout << "Starting hull: " << std::endl << "LINESTRING(" ;
     for (auto elem = last->next(); ; elem=elem->next()) {
-#ifdef DEBUG
-        std::cout << elem->data().p[0] << " " << elem->data().p[1] << std::endl;
-#endif
+        std::cout << elem->data().p[0] << " " << osrm::util::web_mercator::yToLat( elem->data().p[1]) << ',' ;
         if (elem == last)
             break;
     }
+    std::cout << ")" << std::endl ;
+#endif
 
     // index the segments with an R-tree (for intersection checks)
     rtree<T, 2, MAX_CHILDREN, circ_elem_ptr_type> segTree;
@@ -608,11 +602,23 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
             node.minY, node.maxX, node.maxY });
     }
 
-    auto sqConcavity = concavity * concavity;
+    //  Modification from the base algorithm
+    //  The concavity property was very sensitive to the control parameter, making it difficult to control
+    //  The parameter was used to control the distance of points to consider, to a segment
+    //  It is now used to control the modification rate of that distance
+    //  => The more we advance in the details, the less the distance of points to consider is low.
+    auto concav_value = 1 - 10.0/100.0 ;
+    auto sqConcavity = concav_value * concav_value;
     auto sqLenThreshold = lengthThreshold * lengthThreshold;
 
+    size_t queue_remain = queue.size() ;
     // process edges one by one
     while (!queue.empty()) {
+        //  Update the distance parameter after each round of the current polygon
+        if( --queue_remain==0 ) {
+            sqConcavity *= (1-(concavity/100.0)/2.0) ;
+            queue_remain = queue.size() ;
+        }
         auto elem = *queue.begin();
         queue.pop_front();
 
@@ -625,8 +631,7 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
         auto sqLen = getSqDist(b, c);
         if (sqLen < sqLenThreshold)
             continue;
-
-        auto maxSqLen = sqLen / sqConcavity;
+        auto maxSqLen = sqLen * sqConcavity;
 
 #ifdef DEBUG_2
         // dump key parameters either on every pass or when a certain point is 'b'
@@ -661,10 +666,20 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
 
             segTree.insert(elem, { node.minX, node.minY, node.maxX, node.maxY });
             segTree.insert(elem->next(), { next.minX, next.minY, next.maxX, next.maxY });
+#ifdef DEBUG
+            std::cout << "LINESTRING(" ;
+            for (auto elem = last->next(); ; elem=elem->next()) {
+                std::cout << elem->data().p[0] << " " << osrm::util::web_mercator::yToLat( elem->data().p[1] ) << ',' ;
+                if (elem == last)
+                    break;
+            }
+            std::cout << ")" << std::endl ;
+#endif
         }
 #ifdef DEBUG
         else
-            printf ("No point found along segment: %0.6f %0.6f, %0.6f %0.6f \n", b[0], b[1], c[0], c[1]);
+            if( !ok)
+                printf ("No point found along segment: %0.6f %0.6f, %0.6f %0.6f \n", b[0], b[1], c[0], c[1]);
 #endif
     }
 
@@ -691,7 +706,6 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
     bool &ok) {
 
     typedef std::array<T, 2> point_type;
-    typedef CircularElement<Node<T>> circ_elem_type;
     typedef rtree<T, 2, MAX_CHILDREN, std::array<T, 2>> tree_type;
     typedef const tree_type const_tree_type;
     typedef std::reference_wrapper<const_tree_type> tree_ref_type;
@@ -730,14 +744,14 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
 
             // skip all points that are as close to adjacent edges (a,b) and (c,d),
             // and points that would introduce self-intersections when connected
-            auto d0 = sqSegDist(p, a, b);
-            auto d1 = sqSegDist(p, c, d);
+            auto distance_ab = sqSegDist(p, a, b);
+            auto distance_cd = sqSegDist(p, c, d);
 
 #ifdef DEBUG_2
-            printf ("    p: %0.6f %0.6f sqSegDist: %e, %e, %e \n", bounds[0], bounds[1], d0, std::get<0>(item), d1);
+            printf ("    p: %0.6f %0.6f sqSegDist: %e, %e, %e \n", bounds[0], bounds[1], distance_ab, std::get<0>(item), distance_cd);
 #endif
 
-            if (-std::get<0>(item) < d0 && -std::get<0>(item) < d1 &&
+            if (-std::get<0>(item) < distance_ab && -std::get<0>(item) < distance_cd &&
                 noIntersections(b, p, segTree) &&
                 noIntersections(c, p, segTree)) {
 
@@ -747,8 +761,8 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
 
 #ifdef DEBUG_2
             else {
-                bool cond1 = -std::get<0>(item) < d0;
-                bool cond2 = -std::get<0>(item) < d1;
+                bool cond1 = -std::get<0>(item) < distance_ab;
+                bool cond2 = -std::get<0>(item) < distance_cd;
                 bool cond3 = noIntersections(b, p, segTree);
                 bool cond4 = noIntersections(c, p, segTree);
                 std::cout << "Not OK: " << cond1 << " " << cond2 << " " << cond3 << " " << cond4 << std::endl;

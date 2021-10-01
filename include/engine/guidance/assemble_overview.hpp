@@ -17,13 +17,8 @@ namespace guidance
 std::vector<util::Coordinate> assembleOverview(const std::vector<LegGeometry> &leg_geometries,
                                                const bool use_simplification);
 
-std::vector<util::Coordinate> reduceOverview_internal(const std::vector<util::Coordinate> &geometry,
-                                             const unsigned alpha_max);
-
-std::vector<util::Coordinate> reduceOverview_concaveman(const std::vector<util::Coordinate> &geometry,
-                                             const unsigned alpha_max);
-std::vector<util::Coordinate> reduceOverview_cgal(const std::vector<util::Coordinate> &geometry,
-                                                        const unsigned alpha_max);
+std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate> &geometry,
+                                             const unsigned alpha_max, const bool use_simplification);
 } // namespace guidance
 } // namespace engine
 } // namespace osrm

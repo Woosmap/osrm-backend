@@ -161,7 +161,7 @@ std::vector<util::Coordinate> convexHull(const std::vector<util::Coordinate> &po
 
 
     // Initialize Result
-    int next[n];
+    std::vector<int> next(n);
     for (int i = 0; i < n; i++)
         next[i] = -1;
 
