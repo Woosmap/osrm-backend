@@ -784,12 +784,6 @@ BOOST_AUTO_TEST_CASE(valid_trip_urls)
     auto param_fse_nr_ =
         parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=false");
     BOOST_CHECK(param_fse_nr_->IsValid());
-    auto param_fse_r_sk =
-        parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=true&skip_roundtrip=true");
-    BOOST_CHECK(param_fse_r_sk->IsValid());
-    auto param_fse_r_nsk =
-        parseParameters<TripParameters>("1,2;3,4?source=first&destination=last&roundtrip=true&skip_roundtrip=false");
-    BOOST_CHECK(param_fse_r_nsk->IsValid());
     auto param_fs_r = parseParameters<TripParameters>("1,2;3,4?source=first&roundtrip=true");
     BOOST_CHECK(param_fs_r->IsValid());
     auto param_fs_nr = parseParameters<TripParameters>("1,2;3,4?source=first&roundtrip=false");
@@ -808,8 +802,6 @@ BOOST_AUTO_TEST_CASE(valid_trip_urls)
     BOOST_CHECK_EQUAL(param_fail_1, 15UL);
     auto param_fail_2 = testInvalidOptions<TripParameters>("1,2;3,4?source=first&destination=nah");
     BOOST_CHECK_EQUAL(param_fail_2, 33UL);
-    auto param_fail_3 = testInvalidOptions<TripParameters>("1,2;3,4?source=first&destination=last&skip_roundtrip=bla");
-    BOOST_CHECK_EQUAL(param_fail_3, 53UL);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

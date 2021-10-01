@@ -28,10 +28,6 @@ struct TripParametersGrammar final : public RouteParametersGrammar<Iterator, Sig
 
     TripParametersGrammar() : BaseGrammar(root_rule)
     {
-        skip_roundtrip_rule =
-            qi::lit("skip_roundtrip=") >
-            qi::bool_[ph::bind(&engine::api::TripParameters::skip_roundtrip, qi::_r1) = qi::_1];
-
         roundtrip_rule =
             qi::lit("roundtrip=") >
             qi::bool_[ph::bind(&engine::api::TripParameters::roundtrip, qi::_r1) = qi::_1];
@@ -50,7 +46,7 @@ struct TripParametersGrammar final : public RouteParametersGrammar<Iterator, Sig
             destination_type[ph::bind(&engine::api::TripParameters::destination, qi::_r1) = qi::_1];
 
         root_rule = BaseGrammar::query_rule(qi::_r1) > BaseGrammar::format_rule(qi::_r1) >
-                    -('?' > (skip_roundtrip_rule(qi::_r1) | roundtrip_rule(qi::_r1) | source_rule(qi::_r1) |
+                    -('?' > (roundtrip_rule(qi::_r1) | source_rule(qi::_r1) |
                              destination_rule(qi::_r1) | BaseGrammar::base_rule(qi::_r1)) %
                                 '&');
     }
@@ -59,7 +55,6 @@ struct TripParametersGrammar final : public RouteParametersGrammar<Iterator, Sig
     qi::rule<Iterator, Signature> source_rule;
     qi::rule<Iterator, Signature> destination_rule;
     qi::rule<Iterator, Signature> roundtrip_rule;
-    qi::rule<Iterator, Signature> skip_roundtrip_rule;
     qi::rule<Iterator, Signature> root_rule;
 
     qi::symbols<char, engine::api::TripParameters::SourceType> source_type;
