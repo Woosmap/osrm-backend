@@ -73,8 +73,6 @@ struct TripParameters : public RouteParameters
     SourceType source = SourceType::Any;
     DestinationType destination = DestinationType::Any;
     bool roundtrip = true;
-    // Remove roundtrip route from the response.
-    bool skip_roundtrip = false;
 
     bool IsValid() const { return RouteParameters::IsValid(); }
 };
