@@ -60,6 +60,7 @@ inline std::ostream &operator<<( std::ostream &out, api::BaseParameters::Optimiz
         break;
     case api::BaseParameters::OptimizeType::Distance:
         out << "Distance";
+        break;
     default:
         BOOST_ASSERT_MSG(false, "OptimizeType not fully captured");
     }
