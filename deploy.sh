@@ -4,7 +4,6 @@ set -e
 
 ECR_REPOSITORY=${1}
 VERSION=${2}
-BRANCH=${GITHUB_REF#refs/heads/}
 echo "Deploying version ${VERSION} if Master, we are ${BRANCH}"
 
 if [ -z "${ECR_REPOSITORY}" ]; then
@@ -13,11 +12,7 @@ if [ -z "${ECR_REPOSITORY}" ]; then
     exit 255]
 fi
 
-if [ "${BRANCH}" ==  "master" ]; then
-    echo "Deploy New Release"
-    #aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
-    #docker tag osrm-backend-wgs "${ECR_REPOSITORY}:${VERSION}"
-    #docker push "${ECR_REPOSITORY}:${VERSION}"
-else
-    echo "Branch is not master."
-fi
+aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+docker tag osrm-backend-wgs "${ECR_REPOSITORY}:${VERSION}"
+docker push "${ECR_REPOSITORY}:${VERSION}"
+
