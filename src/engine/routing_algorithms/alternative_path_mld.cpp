@@ -549,7 +549,7 @@ void unpackPackedPaths(InputIt first,
                        const Facade &facade,
                        const PhantomNodes &phantom_node_pair,
                        const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                       const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths)
+                       const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights)
 {
     util::static_assert_iter_category<InputIt, std::input_iterator_tag>();
     util::static_assert_iter_category<OutIt, std::output_iterator_tag>();
@@ -627,7 +627,7 @@ void unpackPackedPaths(InputIt first,
                                                                                 forward_heap,
                                                                                 reverse_heap,
                                                                                 to_node_weight,
-                                                                                cell_border_weigths,
+                                                                                cell_border_weights,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 INVALID_EDGE_WEIGHT,

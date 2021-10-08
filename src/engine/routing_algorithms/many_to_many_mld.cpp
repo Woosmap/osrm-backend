@@ -98,7 +98,7 @@ void relaxOutgoingEdges(
     typename SearchEngineData<mld::Algorithm>::ManyToManyQueryHeap &query_heap,
     const std::function<EdgeWeight(const PhantomNode &, bool)>& /*phantom_weights*/,
     const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
+    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
     Args... args)
 {
     BOOST_ASSERT(!facade.ExcludeNode(heapNode.node));
@@ -117,7 +117,7 @@ void relaxOutgoingEdges(
     if (level >= 1 && !heapNode.data.from_clique_arc)
     {
         const auto &cell = cells.GetCell(metric, level, partition.GetCell(level, heapNode.node));
-        auto getWeigths = cell_border_weigths( DIRECTION) ;
+        auto getWeigths = cell_border_weights( DIRECTION) ;
         if (DIRECTION == FORWARD_DIRECTION)
         { // Shortcuts in forward direction
             auto destination = cell.GetDestinationNodes().begin();
@@ -420,7 +420,7 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
                         const PhantomNode &phantom_node,
                         const std::function<EdgeWeight(const PhantomNode&,bool)>& phantom_weights,
                         const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths)
+                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights)
 {
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
@@ -466,7 +466,7 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
         }
     }
 
-    relaxOutgoingEdges<DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weigths,phantom_node);
+    relaxOutgoingEdges<DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weights,phantom_node);
 }
 
 template <bool DIRECTION>
@@ -477,7 +477,7 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
                          const PhantomNode &phantom_node,
                          const std::function<EdgeWeight(const PhantomNode&,bool)>& phantom_weights,
                          const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                         const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths)
+                         const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights)
 {
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
@@ -495,7 +495,7 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
     const auto &partition = facade.GetMultiLevelPartition();
     const auto maximal_level = partition.GetNumberOfLevels() - 1;
 
-    relaxOutgoingEdges<!DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weigths,phantom_node, maximal_level);
+    relaxOutgoingEdges<!DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weights,phantom_node, maximal_level);
 }
 
 template <bool DIRECTION>

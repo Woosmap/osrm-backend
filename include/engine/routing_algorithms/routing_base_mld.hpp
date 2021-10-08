@@ -231,7 +231,7 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
                         typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                         const typename SearchEngineData<Algorithm>::QueryHeap::HeapNode &heapNode,
                         const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
+                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                         Args... args)
 {
     const auto &partition = facade.GetMultiLevelPartition();
@@ -242,7 +242,7 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
 
     if (level >= 1 && !heapNode.data.from_clique_arc)
     {
-        auto getWeigths = cell_border_weigths( DIRECTION) ;
+        auto getWeigths = cell_border_weights( DIRECTION) ;
         if (DIRECTION == FORWARD_DIRECTION)
         {
             // Shortcuts in forward direction
@@ -345,7 +345,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
                  typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                  typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
                  const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                 const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
+                 const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                  NodeID &middle_node,
                  EdgeWeight &path_upper_bound,
                  const bool force_loop_forward,
@@ -380,7 +380,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
     }
 
     // Relax outgoing edges from node
-    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, to_node_weight, cell_border_weigths, args...);
+    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, to_node_weight, cell_border_weights, args...);
 }
 
 // With (s, middle, t) we trace back the paths middle -> s and middle -> t.
@@ -398,7 +398,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                     typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                     typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
                     const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
+                    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                     const bool force_loop_forward,
                     const bool force_loop_reverse,
                     EdgeWeight weight_upper_bound,
@@ -428,7 +428,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            forward_heap,
                                            reverse_heap,
                                            to_node_weight,
-                                           cell_border_weigths,
+                                           cell_border_weights,
                                            middle,
                                            weight,
                                            force_loop_forward,
@@ -443,7 +443,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            reverse_heap,
                                            forward_heap,
                                            to_node_weight,
-                                           cell_border_weigths,
+                                           cell_border_weights,
                                            middle,
                                            weight,
                                            force_loop_reverse,
@@ -509,7 +509,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                                                                  forward_heap,
                                                                                  reverse_heap,
                                                                                  to_node_weight,
-                                                                                 cell_border_weigths,
+                                                                                 cell_border_weights,
                                                                                  force_loop_forward,
                                                                                  force_loop_reverse,
                                                                                  INVALID_EDGE_WEIGHT,
@@ -535,7 +535,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
                    const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
-                   const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
+                   const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                    EdgeWeight &weight,
                    std::vector<NodeID> &unpacked_nodes,
                    const bool force_loop_forward,
@@ -549,7 +549,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                                                            forward_heap,
                                                            reverse_heap,
                                                            to_node_weight,
-                                                           cell_border_weigths,
+                                                           cell_border_weights,
                                                            force_loop_forward,
                                                            force_loop_reverse,
                                                            weight_upper_bound,
