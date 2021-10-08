@@ -44,7 +44,7 @@ void relaxBorderEdges(const DataFacade<mld::Algorithm> &facade,
                       const EdgeDistance distance,
                       typename SearchEngineData<mld::Algorithm>::ManyToManyQueryHeap &query_heap,
                       LevelID level,
-                      std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
+                      const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight)
 {
     for (const auto edge : facade.GetBorderEdgeRange(level, node))
     {
@@ -96,8 +96,9 @@ void relaxOutgoingEdges(
     const DataFacade<mld::Algorithm> &facade,
     const typename SearchEngineData<mld::Algorithm>::ManyToManyQueryHeap::HeapNode &heapNode,
     typename SearchEngineData<mld::Algorithm>::ManyToManyQueryHeap &query_heap,
-    std::function<EdgeWeight(const PhantomNode &, bool)> /*phantom_weights*/,
-    std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+    const std::function<EdgeWeight(const PhantomNode &, bool)>& /*phantom_weights*/,
+    const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
     Args... args)
 {
     BOOST_ASSERT(!facade.ExcludeNode(heapNode.node));
@@ -116,12 +117,13 @@ void relaxOutgoingEdges(
     if (level >= 1 && !heapNode.data.from_clique_arc)
     {
         const auto &cell = cells.GetCell(metric, level, partition.GetCell(level, heapNode.node));
+        auto getWeigths = cell_border_weigths( DIRECTION) ;
         if (DIRECTION == FORWARD_DIRECTION)
         { // Shortcuts in forward direction
             auto destination = cell.GetDestinationNodes().begin();
             auto shortcut_durations = cell.GetOutDuration(heapNode.node);
             auto shortcut_distances = cell.GetOutDistance(heapNode.node);
-            for (auto shortcut_weight : cell.GetOutWeight(heapNode.node))
+            for (auto shortcut_weight : getWeigths(heapNode.node, level))
             {
                 BOOST_ASSERT(destination != cell.GetDestinationNodes().end());
                 BOOST_ASSERT(!shortcut_durations.empty());
@@ -162,7 +164,7 @@ void relaxOutgoingEdges(
             auto source = cell.GetSourceNodes().begin();
             auto shortcut_durations = cell.GetInDuration(heapNode.node);
             auto shortcut_distances = cell.GetInDistance(heapNode.node);
-            for (auto shortcut_weight : cell.GetInWeight(heapNode.node))
+            for (auto shortcut_weight : getWeigths(heapNode.node, level))
             {
                 BOOST_ASSERT(source != cell.GetSourceNodes().end());
                 BOOST_ASSERT(!shortcut_durations.empty());
@@ -394,7 +396,8 @@ oneToManySearch(SearchEngineData<Algorithm> &engine_working_data,
 
         // Relax outgoing edges
         relaxOutgoingEdges<DIRECTION>(
-            facade, heapNode, query_heap, NULL, getWeightStrategy(facade,optimize), phantom_nodes, phantom_index, phantom_indices);
+            facade, heapNode, query_heap, NULL, getWeightStrategy(facade,optimize),
+            getCellWeightStrategy(facade,optimize), phantom_nodes, phantom_index, phantom_indices);
     }
 
     return std::make_pair(std::move(durations_table), std::move(distances_table));
@@ -415,8 +418,9 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
                         std::vector<EdgeDistance> &distances_table,
                         std::vector<NodeID> &middle_nodes_table,
                         const PhantomNode &phantom_node,
-                        std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
-                        std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
+                        const std::function<EdgeWeight(const PhantomNode&,bool)>& phantom_weights,
+                        const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths)
 {
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
@@ -462,7 +466,7 @@ void forwardRoutingStep(const DataFacade<Algorithm> &facade,
         }
     }
 
-    relaxOutgoingEdges<DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, phantom_node);
+    relaxOutgoingEdges<DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weigths,phantom_node);
 }
 
 template <bool DIRECTION>
@@ -471,8 +475,9 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
                          typename SearchEngineData<Algorithm>::ManyToManyQueryHeap &query_heap,
                          std::vector<NodeBucket> &search_space_with_buckets,
                          const PhantomNode &phantom_node,
-                         std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights,
-                         std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
+                         const std::function<EdgeWeight(const PhantomNode&,bool)>& phantom_weights,
+                         const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                         const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths)
 {
     // Take a copy of the extracted node because otherwise could be modified later if toHeapNode is
     // the same
@@ -490,7 +495,7 @@ void backwardRoutingStep(const DataFacade<Algorithm> &facade,
     const auto &partition = facade.GetMultiLevelPartition();
     const auto maximal_level = partition.GetNumberOfLevels() - 1;
 
-    relaxOutgoingEdges<!DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, phantom_node, maximal_level);
+    relaxOutgoingEdges<!DIRECTION>(facade, heapNode, query_heap, phantom_weights, to_node_weight, cell_border_weigths,phantom_node, maximal_level);
 }
 
 template <bool DIRECTION>
@@ -571,7 +576,8 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
         while (!query_heap.Empty())
         {
             backwardRoutingStep<DIRECTION>(
-                facade, column_idx, query_heap, search_space_with_buckets, target_phantom, phantom_weights, getWeightStrategy(facade,optimize));
+                facade, column_idx, query_heap, search_space_with_buckets, target_phantom, phantom_weights, getWeightStrategy(facade,optimize),
+                getCellWeightStrategy(facade,optimize));
         }
     }
 
@@ -610,7 +616,8 @@ manyToManySearch(SearchEngineData<Algorithm> &engine_working_data,
                                           middle_nodes_table,
                                           source_phantom,
                                           phantom_weights,
-                                          getWeightStrategy(facade,optimize));
+                                          getWeightStrategy(facade,optimize),
+                                          getCellWeightStrategy(facade,optimize));
         }
     }
 

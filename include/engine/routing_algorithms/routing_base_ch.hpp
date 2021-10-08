@@ -463,6 +463,17 @@ getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::B
     return nodeWeight;
 }
 
+template <typename Algorithm>
+inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+getCellWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
+{
+    std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+        GetWeights = [](bool /*out*/) -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+            return [](NodeID, LevelID) { return std::vector<EdgeWeight>();};
+      };
+      return GetWeights;
+}
+
 // assumes that heaps are already setup correctly.
 // ATTENTION: This only works if no additional offset is supplied next to the Phantom Node
 // Offsets.
@@ -479,7 +490,8 @@ void search(SearchEngineData<Algorithm> &engine_working_data,
             const DataFacade<Algorithm> &facade,
             SearchEngineData<Algorithm>::QueryHeap &forward_heap,
             SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-            std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+            const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+            const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
             std::int32_t &weight,
             std::vector<NodeID> &packed_leg,
             const bool force_loop_forward,

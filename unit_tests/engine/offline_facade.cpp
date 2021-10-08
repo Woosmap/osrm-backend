@@ -398,7 +398,8 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const datafacade::ContiguousInternalMemoryDataFacade<Algorithm> &facade,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                   std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                   const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                   const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weigths,
                    EdgeWeight &weight,
                    std::vector<NodeID> &packed_leg,
                    const bool force_loop_forward,
@@ -411,6 +412,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                 forward_heap,
                 reverse_heap,
                 to_node_weight,
+                cell_border_weigths,
                 weight,
                 packed_leg,
                 force_loop_forward,
@@ -439,6 +441,17 @@ getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::B
     return nodeWeight;
 }
 
+template <typename Algorithm>
+inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+getCellWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
+{
+    std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+        GetWeights = [](bool /*out*/)
+        -> std::vector<EdgeWeight> {
+      return std::vector<EdgeWeight>();
+    };
+    return GetWeights;
+}
 } // namespace offline
 } // namespace routing_algorithms
 
