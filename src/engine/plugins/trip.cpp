@@ -296,20 +296,6 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     InternalRouteResult route =
         ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters, phantom_weights);
 
-    if( parameters.skip_roundtrip && parameters.roundtrip && route.segment_end_coordinates.size()>=trip_nodes.size() ) {
-        if( parameters.source==api::TripParameters::SourceType::First ) {
-            route.segment_end_coordinates.pop_back();
-            route.source_traversed_in_reverse.pop_back();
-            route.target_traversed_in_reverse.pop_back();
-            route.unpacked_path_segments.pop_back();
-        } else
-        if( parameters.destination==api::TripParameters::DestinationType::Last ) {
-            route.segment_end_coordinates.erase( route.segment_end_coordinates.begin() );
-            route.source_traversed_in_reverse.erase( route.source_traversed_in_reverse.begin() );
-            route.target_traversed_in_reverse.erase( route.target_traversed_in_reverse.begin() );
-            route.unpacked_path_segments.erase( route.unpacked_path_segments.begin() );
-        }
-    }
     // get api response
     const std::vector<std::vector<NodeID>> trips = {trip_nodes};
     const std::vector<InternalRouteResult> routes = {route};
