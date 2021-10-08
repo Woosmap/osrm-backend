@@ -446,9 +446,8 @@ inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(boo
 getCellWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
 {
     std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
-        GetWeights = [](bool /*out*/)
-        -> std::vector<EdgeWeight> {
-      return std::vector<EdgeWeight>();
+        GetWeights = [](bool /*out*/) -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+      return [](NodeID, LevelID) { return std::vector<EdgeWeight>();};
     };
     return GetWeights;
 }
