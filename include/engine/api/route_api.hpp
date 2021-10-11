@@ -904,6 +904,18 @@ class RouteAPI : public BaseAPI
                                              phantoms.target_phantom,
                                              reversed_target,
                                              parameters.steps);
+            //  Fix the weight value, according to the optimization parameter
+            //  TODO : Change the internal calculation directly
+            switch( parameters.optimize) {
+            case BaseParameters::OptimizeType::Distance :
+                leg.weight = leg.distance ;
+                break ;
+            case BaseParameters::OptimizeType::Time:
+                leg.weight = leg.duration ;
+                break ;
+            default :
+                break ;
+            }
 
             util::Log(logDEBUG) << "Assembling steps " << std::endl;
             if (parameters.steps)
@@ -916,6 +928,20 @@ class RouteAPI : public BaseAPI
                                                      reversed_source,
                                                      reversed_target);
 
+                //  Fix the weight value for the steps, according to the optimization parameter
+                //  TODO : Change the internal calculation directly
+                switch( parameters.optimize) {
+                case BaseParameters::OptimizeType::Distance :
+                    for( auto& step : steps )
+                        step.weight = step.distance ;
+                    break ;
+                case BaseParameters::OptimizeType::Time:
+                    for( auto& step : steps )
+                        step.weight = step.duration ;
+                    break ;
+                default :
+                    break ;
+                }
                 // Apply maneuver overrides before any other post
                 // processing is performed
                 guidance::applyOverrides(BaseAPI::facade, steps, leg_geometry);

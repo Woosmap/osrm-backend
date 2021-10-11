@@ -618,12 +618,12 @@ getCellWeightStrategy( const DataFacade<Algorithm> &facade, osrm::engine::api::B
                 std::vector<EdgeWeight> weights;
                 if (out)
                     for (auto dist : cell.GetOutDuration(node))
-                        weights.push_back(dist != INVALID_EDGE_DISTANCE
+                        weights.push_back(dist != MAXIMAL_EDGE_DURATION
                                           ? static_cast<EdgeWeight>(dist)
                                           : INVALID_EDGE_WEIGHT);
                 else
                     for (auto dist : cell.GetInDuration(node))
-                        weights.push_back(dist != INVALID_EDGE_DISTANCE
+                        weights.push_back(dist != MAXIMAL_EDGE_DURATION
                                           ? static_cast<EdgeWeight>(dist)
                                           : INVALID_EDGE_WEIGHT);
                 return weights;
