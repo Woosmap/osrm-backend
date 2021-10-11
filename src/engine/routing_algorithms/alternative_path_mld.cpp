@@ -548,7 +548,8 @@ void unpackPackedPaths(InputIt first,
                        SearchEngineData<Algorithm> &search_engine_data,
                        const Facade &facade,
                        const PhantomNodes &phantom_node_pair,
-                       std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight)
+                       const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                       const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights)
 {
     util::static_assert_iter_category<InputIt, std::input_iterator_tag>();
     util::static_assert_iter_category<OutIt, std::output_iterator_tag>();
@@ -626,6 +627,7 @@ void unpackPackedPaths(InputIt first,
                                                                                 forward_heap,
                                                                                 reverse_heap,
                                                                                 to_node_weight,
+                                                                                cell_border_weights,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 INVALID_EDGE_WEIGHT,
@@ -715,6 +717,7 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
                                            forward_heap,
                                            reverse_heap,
                                            getWeightStrategy(facade,optimize),
+                                           getCellWeightStrategy(facade,optimize),
                                            overlap_via,
                                            overlap_weight,
                                            DO_NOT_FORCE_LOOPS,
@@ -742,6 +745,7 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
                                            reverse_heap,
                                            forward_heap,
                                            getWeightStrategy(facade,optimize),
+                                           getCellWeightStrategy(facade,optimize),
                                            overlap_via,
                                            overlap_weight,
                                            DO_NOT_FORCE_LOOPS,
@@ -909,7 +913,8 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &sear
                       search_engine_data,
                       facade,
                       phantom_node_pair,
-                      getWeightStrategy(facade,optimize));
+                      getWeightStrategy(facade,optimize),
+                      getCellWeightStrategy(facade,optimize));
 
     //
     // Filter and rank a second time. This time instead of being fast and doing

@@ -4,7 +4,7 @@ FROM ubuntu:20.04 as builder
 ARG DEBIAN_FRONTEND="noninteractive"
 ARG VERSION="5.26.0-WGS1"
 ENV TZ="Europe/Paris"
-ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
+#ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
 
 RUN apt-get update &&  apt-get install -y curl build-essential git cmake pkg-config \
           libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev \
@@ -19,9 +19,9 @@ RUN mkdir -p /usr/src/app/build && \
 
 RUN --mount=type=cache,target=/usr/src/app/build  \
     cd build && pwd && ls &&\
-    cmake .. && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_ASSERTIONS=On -DBUILD_TOOLS=On -DENABLE_LTO=On && \
     make -j4 install && \
-    cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME} && \
+    #cpack -G DEB -P osrmwgs -R ${VERSION} -D CPACK_PACKAGE_CONTACT=devproduit@woosmap.com -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -D CPACK_PACKAGE_FILE_NAME=${PACKAGE_FILE_NAME} && \
     cp -r * ../build-tmp && \
     cd ../profiles && cp -r * /opt
 

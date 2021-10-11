@@ -241,7 +241,8 @@ template <bool DIRECTION, typename Algorithm, typename... Args>
 void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
                         typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                         const typename SearchEngineData<Algorithm>::QueryHeap::HeapNode &heapNode,
-                        std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                        const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                        const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                         Args... args)
 {
     const auto &partition = facade.GetMultiLevelPartition();
@@ -252,13 +253,14 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
 
     if (level >= 1 && !heapNode.data.from_clique_arc)
     {
+        auto getWeigths = cell_border_weights( DIRECTION) ;
         if (DIRECTION == FORWARD_DIRECTION)
         {
             // Shortcuts in forward direction
             const auto &cell =
                 cells.GetCell(metric, level, partition.GetCell(level, heapNode.node));
             auto destination = cell.GetDestinationNodes().begin();
-            for (auto shortcut_weight : cell.GetOutWeight(heapNode.node))
+            for (auto shortcut_weight : getWeigths(heapNode.node, level))
             {
                 BOOST_ASSERT(destination != cell.GetDestinationNodes().end());
                 const NodeID to = *destination;
@@ -288,7 +290,7 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
             const auto &cell =
                 cells.GetCell(metric, level, partition.GetCell(level, heapNode.node));
             auto source = cell.GetSourceNodes().begin();
-            for (auto shortcut_weight : cell.GetInWeight(heapNode.node))
+            for (auto shortcut_weight : getWeigths(heapNode.node, level))
             {
                 BOOST_ASSERT(source != cell.GetSourceNodes().end());
                 const NodeID to = *source;
@@ -353,7 +355,8 @@ template <bool DIRECTION, typename Algorithm, typename... Args>
 void routingStep(const DataFacade<Algorithm> &facade,
                  typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                  typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                 std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                 const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                 const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                  NodeID &middle_node,
                  EdgeWeight &path_upper_bound,
                  const bool force_loop_forward,
@@ -387,7 +390,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
     }
 
     // Relax outgoing edges from node
-    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, to_node_weight, args...);
+    relaxOutgoingEdges<DIRECTION>(facade, forward_heap, heapNode, to_node_weight, cell_border_weights, args...);
 }
 
 // With (s, middle, t) we trace back the paths middle -> s and middle -> t.
@@ -405,7 +408,8 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                     const DataFacade<Algorithm> &facade,
                     typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                     typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                    std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                    const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                    const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                     const bool force_loop_forward,
                     const bool force_loop_reverse,
                     EdgeWeight weight_upper_bound,
@@ -442,6 +446,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            forward_heap,
                                            reverse_heap,
                                            to_node_weight,
+                                           cell_border_weights,
                                            middle,
                                            weight,
                                            force_loop_forward,
@@ -456,6 +461,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                            reverse_heap,
                                            forward_heap,
                                            to_node_weight,
+                                           cell_border_weights,
                                            middle,
                                            weight,
                                            force_loop_reverse,
@@ -535,6 +541,7 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
                                                                                  forward_heap,
                                                                                  reverse_heap,
                                                                                  to_node_weight,
+                                                                                 cell_border_weights,
                                                                                  force_loop_forward,
                                                                                  force_loop_reverse,
                                                                                  weight_upper_bound,
@@ -559,7 +566,8 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const DataFacade<Algorithm> &facade,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
-                   std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)> to_node_weight,
+                   const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                   const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                    EdgeWeight &weight,
                    std::vector<NodeID> &unpacked_nodes,
                    const bool force_loop_forward,
@@ -573,6 +581,7 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                                                            forward_heap,
                                                            reverse_heap,
                                                            to_node_weight,
+                                                           cell_border_weights,
                                                            force_loop_forward,
                                                            force_loop_reverse,
                                                            weight_upper_bound,
@@ -598,6 +607,88 @@ getWeightStrategy( const DataFacade<Algorithm> &facade, osrm::engine::api::BaseP
     };
     return nodeWeight ;
 }
+
+template <typename Algorithm>
+inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+getCellWeightStrategy( const DataFacade<Algorithm> &facade, osrm::engine::api::BaseParameters::OptimizeType optimize)
+{
+        const auto &partition = facade.GetMultiLevelPartition();
+        const auto &metric = facade.GetCellMetric();
+        switch (optimize) {
+        case osrm::engine::api::BaseParameters::OptimizeType::Distance: {
+            std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+                GetDistances = [&facade, &partition, &metric](bool out)
+                -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+                auto GetDistances_ = [out, &facade, &partition, &metric](NodeID node, LevelID level) {
+                    const auto &cell = facade.GetCellStorage().GetCell(
+                        metric, level, partition.GetCell(level, node));
+                    std::vector<EdgeWeight> weights;
+                    if (out)
+                        for (auto dist : cell.GetOutDistance(node))
+                            weights.push_back(dist != INVALID_EDGE_DISTANCE
+                                                  ? static_cast<EdgeWeight>(dist)
+                                                  : INVALID_EDGE_WEIGHT);
+                    else
+                        for (auto dist : cell.GetInDistance(node))
+                            weights.push_back(dist != INVALID_EDGE_DISTANCE
+                                                  ? static_cast<EdgeWeight>(dist)
+                                                  : INVALID_EDGE_WEIGHT);
+                    return weights;
+                };
+                return GetDistances_;
+            };
+            return GetDistances;
+        }
+            // break ;
+        case osrm::engine::api::BaseParameters::OptimizeType::Time: {
+            std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+                GetDurations = [&facade, &partition, &metric](bool out)
+                -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+              auto GetDurations_ = [out, &facade, &partition, &metric](NodeID node, LevelID level) {
+                const auto &cell = facade.GetCellStorage().GetCell(
+                    metric, level, partition.GetCell(level, node));
+                std::vector<EdgeWeight> weights;
+                if (out)
+                    for (auto dist : cell.GetOutDuration(node))
+                        weights.push_back(dist != MAXIMAL_EDGE_DURATION
+                                          ? static_cast<EdgeWeight>(dist)
+                                          : INVALID_EDGE_WEIGHT);
+                else
+                    for (auto dist : cell.GetInDuration(node))
+                        weights.push_back(dist != MAXIMAL_EDGE_DURATION
+                                          ? static_cast<EdgeWeight>(dist)
+                                          : INVALID_EDGE_WEIGHT);
+                return weights;
+              };
+              return GetDurations_;
+            };
+            return GetDurations;
+        }
+            // break;
+        default: {
+            std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+                GetWeigths = [&facade, &partition, &metric](bool out)
+                -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+              auto GetWeigths_ = [out, &facade, &partition, &metric](NodeID node, LevelID level) {
+                const auto &cell = facade.GetCellStorage().GetCell(
+                    metric, level, partition.GetCell(level, node));
+                std::vector<EdgeWeight> weights;
+                if (out)
+                    for (auto dist : cell.GetOutWeight(node))
+                        weights.push_back(dist);
+                else
+                    for (auto dist : cell.GetInWeight(node))
+                        weights.push_back(dist);
+                return weights;
+              };
+              return GetWeigths_;
+            };
+            return GetWeigths;
+        }
+            // break;
+        }
+}
+
 
 // TODO: refactor CH-related stub to use unpacked_edges
 template <typename RandomIter, typename FacadeT>
@@ -653,6 +744,7 @@ double getNetworkDistance(SearchEngineData<Algorithm> &engine_working_data,
                                                               forward_heap,
                                                               reverse_heap,
                                                               getWeightStrategy(facade,osrm::engine::api::BaseParameters::OptimizeType::Weight),
+                                                              getCellWeightStrategy(facade,osrm::engine::api::BaseParameters::OptimizeType::Weight),
                                                               DO_NOT_FORCE_LOOPS,
                                                               DO_NOT_FORCE_LOOPS,
                                                               weight_upper_bound,
