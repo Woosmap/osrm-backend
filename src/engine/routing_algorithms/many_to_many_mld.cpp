@@ -65,7 +65,7 @@ void relaxBorderEdges(const DataFacade<mld::Algorithm> &facade,
             const auto turn_weight = to_node_weight(node_id, turn_id);
             const auto turn_duration = node_duration + facade.GetDurationPenaltyForEdgeID(turn_id);
 
-            BOOST_ASSERT_MSG(turn_weight > 0, "edge weight is invalid");
+            BOOST_ASSERT_MSG(turn_weight >= 0, "edge weight is invalid");
             const auto to_weight = weight + turn_weight;
             const auto to_duration = duration + turn_duration;
             const auto to_distance = distance + node_distance;
