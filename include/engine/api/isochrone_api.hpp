@@ -86,10 +86,13 @@ class IsochroneAPI final : public RouteAPI
         }
 
         // Fill geometry
-        const std::vector<util::Coordinate> &overview = guidance::reduceOverview(
+        std::vector<util::Coordinate> overview = guidance::reduceOverview(
             points,
             parameters.convexity_value,
             parameters.overview == RouteParameters::OverviewType::Simplified) ;
+        //  The returned polygon is not closed, let's close it
+        if( !overview.empty() )
+            overview.push_back( overview.front() ) ;
         mapbox::util::variant<flatbuffers::Offset<flatbuffers::String>,
             flatbuffers::Offset<flatbuffers::Vector<const fbresult::Position *>>>
             geometry;
@@ -105,6 +108,67 @@ class IsochroneAPI final : public RouteAPI
         }
         response->add_waypoints(waypoints_vector);
         fb_result.Finish(response->Finish());
+    }
+
+    virtual void
+    MakeResponse(const PhantomNode &source,
+                 const std::vector<util::Coordinate> &points,
+                 util::json::Object &response) const
+    {
+        if (!parameters.skip_waypoints)
+            response.values["source"] = MakeWaypoint(source);
+
+        boost::optional<util::json::Value> json_geometry = MakePolygone( points ) ;
+
+        util::json::Object properties;
+        if (json_geometry)
+        {
+            properties.values["overview"] = *std::move(json_geometry);
+        }
+        switch( parameters.optimize ) {
+        case IsochroneParameters::OptimizeType::Distance :
+            properties.values["distance"] = parameters.range ;
+            break ;
+        case IsochroneParameters::OptimizeType::Time :
+            properties.values["duration"] = parameters.range ;
+            break ;
+        default :
+            properties.values["weight"] = parameters.range ;
+            break ;
+        }
+        response.values["isoline"] = properties;
+        response.values["code"] = "Ok";
+        auto data_timestamp = facade.GetTimestamp();
+        if (!data_timestamp.empty())
+        {
+            response.values["data_version"] = data_timestamp;
+        }
+    }
+
+  protected:
+
+    boost::optional<util::json::Value>
+    MakePolygone( const std::vector<util::Coordinate> &points) const {
+        std::vector<util::Coordinate> overview = guidance::reduceOverview(
+            points,
+            parameters.convexity_value,
+            parameters.overview == RouteParameters::OverviewType::Simplified);
+        //  The returned polygon is not closed, let's close it
+        if( !overview.empty() )
+            overview.push_back( overview.front() ) ;
+        boost::optional<util::json::Value> json_geometry;
+        switch( parameters.geometries ) {
+        case RouteParameters::GeometriesType::Polyline :
+            json_geometry = json::makePolyline<100000>(overview.begin(), overview.end());
+            break ;
+        case RouteParameters::GeometriesType::Polyline6 :
+            json_geometry = json::makePolyline<1000000>(overview.begin(), overview.end());
+            break ;
+        case RouteParameters::GeometriesType::GeoJSON :
+            json_geometry = json::makeGeoJSONGeometry(overview.begin(), overview.end());
+            break ;
+        }
+        return json_geometry ;
     }
 
     template <typename ForwardIter>
@@ -147,56 +211,6 @@ class IsochroneAPI final : public RouteAPI
       private:
         Builder &builder;
     };
-
-    virtual void
-    MakeResponse(const PhantomNode &source,
-                 const std::vector<util::Coordinate> &points,
-                 util::json::Object &response) const
-    {
-        if (!parameters.skip_waypoints)
-            response.values["source"] = MakeWaypoint(source);
-
-        const std::vector<util::Coordinate> &overview = guidance::reduceOverview(
-            points,
-            parameters.convexity_value,
-            parameters.overview == RouteParameters::OverviewType::Simplified) ;
-        boost::optional<util::json::Value> json_geometry;
-        switch( parameters.geometries ) {
-        case RouteParameters::GeometriesType::Polyline :
-            json_geometry = json::makePolyline<100000>(overview.begin(), overview.end());
-            break ;
-        case RouteParameters::GeometriesType::Polyline6 :
-            json_geometry = json::makePolyline<1000000>(overview.begin(), overview.end());
-            break ;
-        case RouteParameters::GeometriesType::GeoJSON :
-            json_geometry = json::makeGeoJSONGeometry(overview.begin(), overview.end());
-            break ;
-        }
-
-        util::json::Object properties;
-        if (json_geometry)
-        {
-            properties.values["overview"] = *std::move(json_geometry);
-        }
-        switch( parameters.optimize ) {
-        case IsochroneParameters::OptimizeType::Distance :
-            properties.values["distance"] = parameters.range ;
-            break ;
-        case IsochroneParameters::OptimizeType::Time :
-            properties.values["duration"] = parameters.range ;
-            break ;
-        default :
-            properties.values["weight"] = parameters.range ;
-            break ;
-        }
-        response.values["isoline"] = properties;
-        response.values["code"] = "Ok";
-        auto data_timestamp = facade.GetTimestamp();
-        if (!data_timestamp.empty())
-        {
-            response.values["data_version"] = data_timestamp;
-        }
-    }
 
   protected:
     const IsochroneParameters &parameters;

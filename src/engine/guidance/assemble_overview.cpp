@@ -116,6 +116,18 @@ std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate>
     typedef std::array<T, 2> point_type;
 
     auto hull = convexHull( geometry ) ;
+    //  Making a convex hull will repeat the 1st point at the end to close the polygon
+    //  But we don't want that repetition for the other computations
+    if( hull.size()>2 )
+        hull.pop_back() ;
+    if( alpha_max>=100 ) {
+        if( use_simplification ) {
+            const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
+            hull = douglasPeucker(hull.begin(), hull.end(), zoom_level);
+        }
+        return hull ;
+    }
+
     std::vector<std::array<T, 2>> points, convex_hull ;
     std::transform( geometry.begin(), geometry.end(), std::back_inserter(points), [](const util::Coordinate& p) -> std::array<T, 2>{
       auto xy = util::web_mercator::fromWGS84(p);
@@ -130,13 +142,17 @@ std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate>
     std::vector<std::array<T, 2>> concave_hull = concaveman<T,16>( points, convex_hull, concavity, 0.0) ;
 
     std::vector<util::Coordinate> res ;
-    std::transform( concave_hull.begin(), concave_hull.end(), std::back_inserter(res), [](const point_type& p){
-      return util::web_mercator::toWGS84( util::FloatCoordinate(util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}) ) ;
-    }) ;
     if( use_simplification ) {
+        std::transform( concave_hull.begin(), concave_hull.end(), std::back_inserter(res), [](const point_type& p){
+          return util::web_mercator::toWGS84( util::FloatCoordinate(util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}) ) ;
+        }) ;
         const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
         res = douglasPeucker(res.begin(), res.end(), zoom_level);
     }
+    else
+        std::transform( concave_hull.begin(), concave_hull.end(), std::back_inserter(res), [](const point_type& p){
+          return util::Coordinate(util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}) ;
+        }) ;
 #ifdef DEBUG
     std::cout << "LINESTRING(" ;
     for( const auto& p : res)

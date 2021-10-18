@@ -196,7 +196,7 @@ std::vector<util::Coordinate> convexHull(const std::vector<util::Coordinate> &po
             result.push_back(points[i]) ;
             //cout << "(" << points[i].lon << ", " << points[i].lat << ")\n";
     }
-    result.push_back(points[0]) ;
+    result.push_back(result[0]) ;
     return result ;
 }
 
@@ -213,16 +213,6 @@ std::vector<util::Coordinate> almostConvexHull(const std::vector<util::Coordinat
     //  Shortcut that would finally result in no-operation on the entry polyline
     if(max_alpha >=180.0 )
         return points ;
-/*
-    std::vector<util::Coordinate> points = {
-        util::Coordinate( util::FloatLongitude{3.95796}, util::FloatLatitude{43.57991} ),
-        util::Coordinate( util::FloatLongitude{3.99097},util::FloatLatitude{43.55171 } ),
-        util::Coordinate( util::FloatLongitude{3.95976},util::FloatLatitude{43.57635 } ),
-        util::Coordinate( util::FloatLongitude{3.99007},util::FloatLatitude{43.55078 } ),
-        util::Coordinate( util::FloatLongitude{3.95893},util::FloatLatitude{43.57601 } ),
-        util::Coordinate( util::FloatLongitude{3.98813},util::FloatLatitude{43.54896} ),
-        util::Coordinate( util::FloatLongitude{3.98382},util::FloatLatitude{43.55029} )
-    } ;*/
     //  Strong hypothesis : We suppose the points are already sorted in heading order (simple polyline)
     std::vector<util::Coordinate> result ;
     auto min_lon = std::min_element( points.begin(), points.end(), [](const util::Coordinate &p1, const util::Coordinate &p2) {
