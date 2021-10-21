@@ -486,8 +486,10 @@ UnpackedPath search(SearchEngineData<Algorithm> &engine_working_data,
         std::vector<EdgeWeight> unpacked_weigths;
 
         std::for_each( forward_heap.nodesBegin(), forward_heap.nodesEnd(), [&](const auto& d){
-          unpacked_nodes.push_back( d.node ) ;
-          unpacked_weigths.push_back( d.weight ) ;
+          if( d.weight<=weight_upper_bound ) {
+              unpacked_nodes.push_back(d.node);
+              unpacked_weigths.push_back(d.weight);
+          }
         });
         return std::make_tuple(weight, std::move(unpacked_nodes), std::vector<EdgeID>(), std::move(unpacked_weigths));
     }

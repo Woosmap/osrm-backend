@@ -7,7 +7,9 @@
 #include <limits>
 #include <numeric>
 #include <vector>
-
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/geometries.hpp>
 namespace osrm
 {
 namespace engine
@@ -116,50 +118,91 @@ std::vector<util::Coordinate> reduceOverview(const std::vector<util::Coordinate>
     typedef std::array<T, 2> point_type;
 
     auto hull = convexHull( geometry ) ;
-    //  Making a convex hull will repeat the 1st point at the end to close the polygon
-    //  But we don't want that repetition for the other computations
-    if( hull.size()>2 )
-        hull.pop_back() ;
-    if( alpha_max>=100 ) {
-        if( use_simplification ) {
+
+    if( alpha_max<100 && hull.size()>3)
+    {
+        std::vector<std::array<T, 2>> points, convex_hull;
+        std::transform(geometry.begin(),
+                       geometry.end(),
+                       std::back_inserter(points),
+                       [](const util::Coordinate &p) -> std::array<T, 2> {
+                           auto xy = util::web_mercator::fromWGS84(p);
+                           return {static_cast<T>(xy.lon), static_cast<T>(xy.lat)};
+                       });
+        std::transform(hull.begin(),
+                       hull.end()-1,
+                       std::back_inserter(convex_hull),
+                       [](const util::Coordinate &p) -> std::array<T, 2> {
+                           auto xy = util::web_mercator::fromWGS84(p);
+                           return {static_cast<T>(xy.lon), static_cast<T>(xy.lat)};
+                       });
+
+        double concavity = static_cast<double>(alpha_max);
+        std::vector<std::array<T, 2>> concave_hull =
+            concaveman<T, 16>(points, convex_hull, concavity, 0.0);
+
+        hull.clear() ;
+        std::transform(concave_hull.begin(),
+                       concave_hull.end(),
+                       std::back_inserter(hull),
+                       [](const point_type &p) {
+                           return util::web_mercator::toWGS84(util::FloatCoordinate(
+                               util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}));
+                       });
+        if( !hull.empty() )
+            hull.push_back( hull.front() ) ;
+    }
+    if( use_simplification )
+    {
+        if( alpha_max<1000 ){
             const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
             hull = douglasPeucker(hull.begin(), hull.end(), zoom_level);
         }
-        return hull ;
-    }
-
-    std::vector<std::array<T, 2>> points, convex_hull ;
-    std::transform( geometry.begin(), geometry.end(), std::back_inserter(points), [](const util::Coordinate& p) -> std::array<T, 2>{
-      auto xy = util::web_mercator::fromWGS84(p);
-      return { static_cast<T>(xy.lon), static_cast<T>(xy.lat) } ;
-    }) ;
-    std::transform( hull.begin(), hull.end(), std::back_inserter(convex_hull), [](const util::Coordinate& p) -> std::array<T, 2>{
-        auto xy = util::web_mercator::fromWGS84(p);
-        return { static_cast<T>(xy.lon), static_cast<T>(xy.lat) } ;
-    }) ;
-
-    double concavity = static_cast<double>(alpha_max) ;
-    std::vector<std::array<T, 2>> concave_hull = concaveman<T,16>( points, convex_hull, concavity, 0.0) ;
-
-    std::vector<util::Coordinate> res ;
-    if( use_simplification ) {
-        std::transform( concave_hull.begin(), concave_hull.end(), std::back_inserter(res), [](const point_type& p){
-          return util::web_mercator::toWGS84( util::FloatCoordinate(util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}) ) ;
-        }) ;
-        const auto zoom_level = std::min(18u, calculateOverviewZoomLevel(geometry));
-        res = douglasPeucker(res.begin(), res.end(), zoom_level);
-    }
-    else
-        std::transform( concave_hull.begin(), concave_hull.end(), std::back_inserter(res), [](const point_type& p){
-          return util::Coordinate(util::FloatLongitude{p[0]}, util::FloatLatitude{p[1]}) ;
-        }) ;
 #ifdef DEBUG
-    std::cout << "LINESTRING(" ;
-    for( const auto& p : res)
-        std::cout << util::toFloating(p.lon) << ' ' << util::toFloating(p.lat) << ',' ;
-    std::cout << ')' << std::endl ;
+        std::cout << "LINESTRING(";
+        for (const auto &p : res)
+            std::cout << util::toFloating(p.lon) << ' ' << util::toFloating(p.lat) << ',';
+        std::cout << ')' << std::endl;
 #endif
-    return res ;
+        typedef double coordinate_type;
+        typedef boost::geometry::model::d2::point_xy<coordinate_type> point;
+        typedef boost::geometry::model::polygon<point> polygon;
+
+        // Declare strategies
+        const double buffer_distance = ( alpha_max>10 ? 0.001 : 0.0005 ) ;
+        const int points_per_circle = 3;
+        boost::geometry::strategy::buffer::distance_symmetric<coordinate_type> distance_strategy(
+            buffer_distance);
+        boost::geometry::strategy::buffer::join_round join_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::end_round end_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::point_circle circle_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::side_straight side_strategy;
+
+        std::vector<point> points_;
+        polygon pol;
+        boost::geometry::model::multi_polygon<polygon> result;
+        std::for_each(hull.begin(), hull.end(), [&points_](util::Coordinate &p) {
+            auto xy = util::web_mercator::fromWGS84(p);
+            points_.push_back(point(coordinate_type(xy.lon), coordinate_type(xy.lat)));
+        });
+        boost::geometry::assign_points(pol, points_);
+        boost::geometry::buffer(pol,
+                                result,
+                                distance_strategy,
+                                side_strategy,
+                                join_strategy,
+                                end_strategy,
+                                circle_strategy);
+        hull.clear();
+        boost::geometry::for_each_point(result.front(), [&hull](point &p) {
+            auto xy = util::web_mercator::toWGS84(
+                util::FloatCoordinate(util::FloatLongitude{p.x()}, util::FloatLatitude{p.y()}));
+          hull.push_back(xy);
+        });
+    }
+    if( !hull.empty() )
+        hull.pop_back( ) ;
+    return hull ;
 }
 } // namespace guidance
 } // namespace engine

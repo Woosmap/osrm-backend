@@ -26,10 +26,10 @@
 //#define DEBUG_2 // uncomment to dump second-level debug info to screen
 
 
-template<class T> class compare_first {
-public:
+template<class T> class greater_first {
+  public:
     bool operator()(const T &a, const T &b) {
-        return (std::get<0>(a) < std::get<0>(b));
+        return (std::get<0>(a) > std::get<0>(b));
     }
 };
 
@@ -72,6 +72,21 @@ template<class T> T getSqDist(
     return dx * dx + dy * dy;
 }
 
+
+// square distance within a circle
+template<class T> T sqCircleDistance(
+    const std::array<T, 2> &p,
+    const std::array<T, 2> &p1,
+    const std::array<T, 2> &p2) {
+
+    auto distance = [](const std::array<T, 2> &p1, const std::array<T, 2> &p2){
+      auto dx = p1[0] - p2[0];
+      auto dy = p1[1] - p2[1];
+      return dx*dx + dy*dy ;
+    };
+
+    return distance(p,p1) + distance(p,p2) ;
+}
 
 // square distance from a point to a segment
 template<class T> T sqSegDist(
@@ -607,7 +622,8 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     //  The parameter was used to control the distance of points to consider, to a segment
     //  It is now used to control the modification rate of that distance
     //  => The more we advance in the details, the less the distance of points to consider is low.
-    auto concav_value = 1 - 10.0/100.0 ;
+    //auto concav_value = 1 - 20.0/100.0 ;
+    auto concav_value = 1.0 ;
     auto sqConcavity = concav_value * concav_value;
     auto sqLenThreshold = lengthThreshold * lengthThreshold;
 
@@ -616,7 +632,7 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     while (!queue.empty()) {
         //  Update the distance parameter after each round of the current polygon
         if( --queue_remain==0 ) {
-            sqConcavity *= (1-(concavity/100.0)/2.0) ;
+            sqConcavity *= (1-concavity/1000.0) ;
             queue_remain = queue.size() ;
         }
         auto elem = *queue.begin();
@@ -717,23 +733,32 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
 
     ok = false;
 
-    std::priority_queue<tuple_type, std::vector<tuple_type>, compare_first<tuple_type>> queue;
+    std::priority_queue<tuple_type, std::vector<tuple_type>, greater_first<tuple_type>> queue;
     std::reference_wrapper<const_tree_type> node = tree;
 
     // search through the point R-tree with a depth-first search using a priority queue
     // in the order of distance to the edge (b, c)
     while (true) {
-        for (auto &child : node.get().children()) {
+        std::function<void(std::reference_wrapper<const_tree_type>)> candidates ;
+        candidates = [&maxDist, &queue, &b, &c, &candidates](std::reference_wrapper<const_tree_type> node) {
+                for (auto &child : node.get().children())
+                {
+                    auto bounds = child->bounds();
+                    point_type pt = {bounds[0], bounds[1]};
+                    if( !child->is_leaf() ) {
+                        if( sqSegBoxDist(b, c, *child)<=maxDist )
+                            candidates(*child) ;
+                        continue ;
+                    }
 
-            auto bounds = child->bounds();
-            point_type pt = { bounds[0], bounds[1] };
+                    auto dist = child->is_leaf() ? sqSegDist(pt, b, c) : sqSegBoxDist(b, c, *child);
+                    if (dist > maxDist)
+                        continue; // skip the node if it's farther than we ever need
 
-            auto dist = child->is_leaf() ? sqSegDist(pt, b, c) : sqSegBoxDist(b, c, *child);
-            if (dist > maxDist)
-                continue;  // skip the node if it's farther than we ever need
-
-            queue.push(tuple_type(-dist, *child));
-        }
+                    queue.push(tuple_type(dist, *child));
+                }
+            };
+        candidates(node) ;
 
         while (!queue.empty() && std::get<1>(queue.top()).get().is_leaf()) {
             auto item = queue.top();
@@ -751,7 +776,7 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
             printf ("    p: %0.6f %0.6f sqSegDist: %e, %e, %e \n", bounds[0], bounds[1], distance_ab, std::get<0>(item), distance_cd);
 #endif
 
-            if (-std::get<0>(item) < distance_ab && -std::get<0>(item) < distance_cd &&
+            if (std::get<0>(item) < distance_ab && std::get<0>(item) < distance_cd &&
                 noIntersections(b, p, segTree) &&
                 noIntersections(c, p, segTree)) {
 
