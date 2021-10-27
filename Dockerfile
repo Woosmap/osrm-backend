@@ -2,7 +2,7 @@
 FROM ubuntu:20.04 as builder
 
 ARG DEBIAN_FRONTEND="noninteractive"
-ARG VERSION="5.26.0-WGS1"
+ARG VERSION="5.27.0-WGS2"
 ENV TZ="Europe/Paris"
 #ENV PACKAGE_FILE_NAME="osrm-wgs-${VERSION}"
 
