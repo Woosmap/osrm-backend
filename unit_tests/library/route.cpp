@@ -32,9 +32,12 @@ osrm::Status run_route_json(const osrm::OSRM &osrm,
 
 BOOST_AUTO_TEST_SUITE(route)
 
-void test_route_same_coordinates_fixture(bool use_json_only_api)
+void test_route_same_coordinates_fixture(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -131,16 +134,21 @@ void test_route_same_coordinates_fixture(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_route_same_coordinates_fixture_old_api)
 {
-    test_route_same_coordinates_fixture(true);
+    test_route_same_coordinates_fixture(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_same_coordinates_fixture(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_same_coordinates_fixture_new_api)
 {
-    test_route_same_coordinates_fixture(false);
+    test_route_same_coordinates_fixture(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_same_coordinates_fixture(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_route_same_coordinates(bool use_json_only_api)
+void test_route_same_coordinates(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+                );
 
     using namespace osrm;
 
@@ -289,12 +297,17 @@ void test_route_same_coordinates(bool use_json_only_api)
         }
     }
 }
-BOOST_AUTO_TEST_CASE(test_route_same_coordinates_old_api) { test_route_same_coordinates(true); }
-BOOST_AUTO_TEST_CASE(test_route_same_coordinates_new_api) { test_route_same_coordinates(false); }
+BOOST_AUTO_TEST_CASE(test_route_same_coordinates_old_api) { test_route_same_coordinates(true,osrm::EngineConfig::Algorithm::CH); }
+BOOST_AUTO_TEST_CASE(test_route_same_coordinates_new_api) { test_route_same_coordinates(false,osrm::EngineConfig::Algorithm::CH); }
+BOOST_AUTO_TEST_CASE(test_mld_route_same_coordinates_old_api) { test_route_same_coordinates(true,osrm::EngineConfig::Algorithm::MLD); }
+BOOST_AUTO_TEST_CASE(test_mld_route_same_coordinates_new_api) { test_route_same_coordinates(false,osrm::EngineConfig::Algorithm::MLD); }
 
-void test_route_same_coordinates_no_waypoints(bool use_json_only_api)
+void test_route_same_coordinates_no_waypoints(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -339,16 +352,21 @@ void test_route_same_coordinates_no_waypoints(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_route_same_coordinates_no_waypoints_old_api)
 {
-    test_route_same_coordinates_no_waypoints(true);
+    test_route_same_coordinates_no_waypoints(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_same_coordinates_no_waypoints(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_same_coordinates_no_waypoints_new_api)
 {
-    test_route_same_coordinates_no_waypoints(false);
+    test_route_same_coordinates_no_waypoints(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_same_coordinates_no_waypoints(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_route_response_for_locations_in_small_component(bool use_json_only_api)
+void test_route_response_for_locations_in_small_component(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -382,16 +400,21 @@ void test_route_response_for_locations_in_small_component(bool use_json_only_api
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_in_small_component_old_api)
 {
-    test_route_response_for_locations_in_small_component(true);
+    test_route_response_for_locations_in_small_component(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_in_small_component(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_in_small_component_new_api)
 {
-    test_route_response_for_locations_in_small_component(false);
+    test_route_response_for_locations_in_small_component(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_in_small_component(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_route_response_for_locations_in_big_component(bool use_json_only_api)
+void test_route_response_for_locations_in_big_component(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -425,16 +448,21 @@ void test_route_response_for_locations_in_big_component(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_in_big_component_old_api)
 {
-    test_route_response_for_locations_in_big_component(true);
+    test_route_response_for_locations_in_big_component(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_in_big_component(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_in_big_component_new_api)
 {
-    test_route_response_for_locations_in_big_component(false);
+    test_route_response_for_locations_in_big_component(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_in_big_component(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_route_response_for_locations_across_components(bool use_json_only_api)
+void test_route_response_for_locations_across_components(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -470,16 +498,21 @@ void test_route_response_for_locations_across_components(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_across_components_old_api)
 {
-    test_route_response_for_locations_across_components(true);
+    test_route_response_for_locations_across_components(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_across_components(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_response_for_locations_across_components_new_api)
 {
-    test_route_response_for_locations_across_components(false);
+    test_route_response_for_locations_across_components(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_response_for_locations_across_components(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_route_user_disables_generating_hints(bool use_json_only_api)
+void test_route_user_disables_generating_hints(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -498,16 +531,21 @@ void test_route_user_disables_generating_hints(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_route_user_disables_generating_hints_old_api)
 {
-    test_route_user_disables_generating_hints(true);
+    test_route_user_disables_generating_hints(true,osrm::EngineConfig::Algorithm::CH);
+    test_route_user_disables_generating_hints(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_route_user_disables_generating_hints_new_api)
 {
-    test_route_user_disables_generating_hints(false);
+    test_route_user_disables_generating_hints(false,osrm::EngineConfig::Algorithm::CH);
+    test_route_user_disables_generating_hints(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void speed_annotation_matches_duration_and_distance(bool use_json_only_api)
+void speed_annotation_matches_duration_and_distance(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -548,16 +586,21 @@ void speed_annotation_matches_duration_and_distance(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(speed_annotation_matches_duration_and_distance_old_api)
 {
-    speed_annotation_matches_duration_and_distance(true);
+    speed_annotation_matches_duration_and_distance(true,osrm::EngineConfig::Algorithm::CH);
+    speed_annotation_matches_duration_and_distance(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(speed_annotation_matches_duration_and_distance_new_api)
 {
-    speed_annotation_matches_duration_and_distance(false);
+    speed_annotation_matches_duration_and_distance(false,osrm::EngineConfig::Algorithm::CH);
+    speed_annotation_matches_duration_and_distance(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
-void test_manual_setting_of_annotations_property(bool use_json_only_api)
+void test_manual_setting_of_annotations_property(bool use_json_only_api, osrm::EngineConfig::Algorithm algorithm)
 {
-    auto osrm = getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm");
+    auto osrm = ( algorithm==osrm::EngineConfig::Algorithm::CH ?
+                  getOSRM(OSRM_TEST_DATA_DIR "/ch/monaco.osrm") :
+                  getOSRM_MLD(OSRM_TEST_DATA_DIR "/mld/monaco.osrm")
+    );
 
     using namespace osrm;
 
@@ -588,11 +631,13 @@ void test_manual_setting_of_annotations_property(bool use_json_only_api)
 }
 BOOST_AUTO_TEST_CASE(test_manual_setting_of_annotations_property_old_api)
 {
-    test_manual_setting_of_annotations_property(true);
+    test_manual_setting_of_annotations_property(true,osrm::EngineConfig::Algorithm::CH);
+    test_manual_setting_of_annotations_property(true,osrm::EngineConfig::Algorithm::MLD);
 }
 BOOST_AUTO_TEST_CASE(test_manual_setting_of_annotations_property_new_api)
 {
-    test_manual_setting_of_annotations_property(false);
+    test_manual_setting_of_annotations_property(false,osrm::EngineConfig::Algorithm::CH);
+    test_manual_setting_of_annotations_property(false,osrm::EngineConfig::Algorithm::MLD);
 }
 
 BOOST_AUTO_TEST_CASE(test_route_serialize_fb)

@@ -52,31 +52,37 @@ struct IsochroneParameters : public RouteParameters
 {
 
     /// Range value to consider an isochrone point
-    EdgeWeight range = (optimize==BaseParameters::OptimizeType::Distance ? 1000 : 300);
+    EdgeWeight max_weight = (optimize == BaseParameters::OptimizeType::Distance ? 1000 : 300);
     /// If the point weight is below that percentage of the range
     /// => don't consider the point : for cases where it stops before a very long segment
     std::size_t convexity_value = 50;
 
     bool IsValid() const {
         return BaseParameters::IsValid() &&
+               //   A single coordinate must be given for isochrone search
+                coordinates.size() == 1 &&
                //   Minimum distance : 100 m / Minimum time : 1 mn
-               range >= (optimize==BaseParameters::OptimizeType::Distance ? 100 : 60) &&
+               max_weight >= (optimize == BaseParameters::OptimizeType::Distance ? 100 : 60) &&
                //   Maximum distance : 200 km / Maximum time : 2 h
-               range <= (optimize==BaseParameters::OptimizeType::Distance ? 200*1000 : 2*60*60) &&
+               max_weight <= (optimize == BaseParameters::OptimizeType::Distance ? 200 * 1000 : 2 * 60 * 60) &&
                convexity_value <=100 ;
     }
 
     boost::optional<std::string> IsValid(bool /*give_me_a_message*/) const {
         if( !BaseParameters::IsValid() )
             return boost::optional<std::string>("Base parameters are wrong");
+        if (coordinates.size() > 1)
+        {
+            return boost::optional<std::string>("Only one input coordinate is supported");
+        }
         switch (optimize)
         {
         case BaseParameters::OptimizeType::Distance :
-            if( range < 100 || range>200*1000 )
+            if(max_weight < 100 || max_weight > 200 * 1000 )
                 return boost::optional<std::string>("The travel distance must be in range [100 m , 200 km]");
             break ;
         default :
-            if( range < 60 || range>2*60*60 )
+            if(max_weight < 60 || max_weight > 2 * 60 * 60 )
                 return boost::optional<std::string>("The travel time must be in range [1 mn , 2:00 h]");
             break ;
         }

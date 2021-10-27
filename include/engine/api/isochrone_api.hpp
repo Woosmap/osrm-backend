@@ -127,13 +127,13 @@ class IsochroneAPI final : public RouteAPI
         }
         switch( parameters.optimize ) {
         case IsochroneParameters::OptimizeType::Distance :
-            properties.values["distance"] = parameters.range ;
+            properties.values["distance"] = parameters.max_weight ;
             break ;
         case IsochroneParameters::OptimizeType::Time :
-            properties.values["duration"] = parameters.range ;
+            properties.values["duration"] = parameters.max_weight ;
             break ;
         default :
-            properties.values["weight"] = parameters.range ;
+            properties.values["weight"] = parameters.max_weight ;
             break ;
         }
         response.values["isoline"] = properties;

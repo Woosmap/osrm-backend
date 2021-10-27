@@ -27,31 +27,36 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                                const api::IsochroneParameters &parameters,
                                osrm::engine::api::ResultT &result) const
 {
-    BOOST_ASSERT(parameters.IsValid());
-    if (parameters.coordinates.size() > 1)
+    if (!algorithms.HasIsochroneSearch())
     {
-        return Error("InvalidOptions", "Only one input coordinate is supported", result);
+        return Error("NotImplemented",
+                     "Isochrone path search is not implemented for the chosen search algorithm. ",
+                     result);
     }
-    if (!CheckAllCoordinates(parameters.coordinates))
-        return Error("InvalidOptions", "Coordinates are invalid", result);
-    if (!CheckAlgorithms(parameters, algorithms, result))
-        return Status::Error;
-
-    if (!algorithms.HasDirectShortestPathSearch() && !algorithms.HasShortestPathSearch())
+    if (!algorithms.HasDirectShortestPathSearch())
     {
         return Error(
             "NotImplemented",
             "Direct shortest path search is not implemented for the chosen search algorithm.",
             result);
     }
+    const auto notValid = parameters.IsValid(true) ;
+    if( notValid )
+    {
+        return Error("InvalidOptions", notValid.value(), result);
+    }
+    if (!CheckAllCoordinates(parameters.coordinates))
+        return Error("InvalidOptions", "Coordinates are invalid", result);
+    if (!CheckAlgorithms(parameters, algorithms, result))
+        return Status::Error;
 
     util::Coordinate startcoord = parameters.coordinates.front();
 
     const auto MAX_SPEED_METERS_PER_SECOND = 90.0 / 3.6;
     const auto MAX_TRAVEL_DISTANCE_METERS = (parameters.optimize==api::IsochroneParameters::OptimizeType::Distance ?
-                                             parameters.range : MAX_SPEED_METERS_PER_SECOND * parameters.range );
+                                             parameters.max_weight : MAX_SPEED_METERS_PER_SECOND * parameters.max_weight );
     //  Range is in meters if optimizing distance or in seconds if optimizing duration (set to 1/10 seconds)
-    auto range = (parameters.optimize==api::IsochroneParameters::OptimizeType::Distance ? parameters.range : parameters.range*10);
+    auto range = (parameters.optimize==api::IsochroneParameters::OptimizeType::Distance ? parameters.max_weight : parameters.max_weight * 10);
     const auto latitude_range = MAX_TRAVEL_DISTANCE_METERS /
                                 (util::coordinate_calculation::detail::EARTH_RADIUS * M_PI * 2) *
                                 360;
@@ -95,8 +100,6 @@ IsochronePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
           //break ;
       }
     };
-    //auto weightName = ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Distance ? "distance" :
-    //                    ( parameters.optimize==osrm::engine::api::BaseParameters::OptimizeType::Time ? "duration" : (const char*)0 ) );
 
     api::IsochroneAPI isochrone_api{facade, parameters};
 

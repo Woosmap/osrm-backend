@@ -141,6 +141,7 @@ class OSRM final
     /**
      * Isochrone: isochrone (range polygon) from a point
      */
+    Status Isochrone(const IsochroneParameters &params, json::Object &result) const;
     Status Isochrone(const IsochroneParameters &parameters, engine::api::ResultT &result) const;
 
   private:

@@ -35,6 +35,9 @@ template <typename AlgorithmT> const char *identifier();
 template <> inline const char *identifier<ch::Algorithm>() { return "ch"; }
 template <> inline const char *identifier<mld::Algorithm>() { return "mld"; }
 
+template <typename AlgorithmT> struct HasIsochroneSearch final : std::false_type
+{
+};
 template <typename AlgorithmT> struct HasOptimizeRouteStrategy final : std::false_type
 {
 };
@@ -64,6 +67,9 @@ template <typename AlgorithmT> struct HasExcludeFlags final : std::false_type
 };
 
 // Algorithms supported by Contraction Hierarchies
+template <> struct HasIsochroneSearch<ch::Algorithm> final : std::false_type
+{
+};
 template <> struct HasOptimizeRouteStrategy<ch::Algorithm> final : std::false_type
 {
 };
@@ -93,6 +99,9 @@ template <> struct HasExcludeFlags<ch::Algorithm> final : std::true_type
 };
 
 // Algorithms supported by Multi-Level Dijkstra
+template <> struct HasIsochroneSearch<mld::Algorithm> final : std::true_type
+{
+};
 template <> struct HasOptimizeRouteStrategy<mld::Algorithm> final : std::true_type
 {
 };

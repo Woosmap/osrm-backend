@@ -21,4 +21,16 @@ getOSRM(const std::string &base_path,
     return osrm::OSRM{config};
 }
 
+inline osrm::OSRM
+getOSRM_MLD(const std::string &base_path,
+        osrm::EngineConfig::Algorithm algorithm = osrm::EngineConfig::Algorithm::MLD)
+{
+    osrm::EngineConfig config;
+    config.storage_config = {base_path};
+    config.use_shared_memory = false;
+    config.algorithm = algorithm;
+
+    return osrm::OSRM{config};
+}
+
 #endif

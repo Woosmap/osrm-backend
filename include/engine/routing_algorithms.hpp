@@ -10,7 +10,6 @@
 #include "engine/routing_algorithms/map_matching.hpp"
 #include "engine/routing_algorithms/shortest_path.hpp"
 #include "engine/routing_algorithms/tile_turns.hpp"
-#include "engine/routing_algorithms/isochrone_nodes.hpp"
 
 namespace osrm
 {
@@ -65,12 +64,10 @@ class RoutingAlgorithmsInterface
     GetTileTurns(const std::vector<datafacade::BaseDataFacade::RTreeLeaf> &edges,
                  const std::vector<std::size_t> &sorted_edge_indexes) const = 0;
 
-    virtual std::vector<PhantomNode>
-    IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
-                   const api::IsochroneParameters &parameters) const = 0;
-
     virtual const DataFacadeBase &GetFacade() const = 0;
 
+
+    virtual bool HasIsochroneSearch() const = 0;
     virtual bool HasOptimizeRouteStrategy() const = 0;
     virtual bool HasAlternativePathSearch() const = 0;
     virtual bool HasShortestPathSearch() const = 0;
@@ -139,11 +136,12 @@ template <typename Algorithm> class RoutingAlgorithms final : public RoutingAlgo
     GetTileTurns(const std::vector<datafacade::BaseDataFacade::RTreeLeaf> &edges,
                  const std::vector<std::size_t> &sorted_edge_indexes) const final override;
 
-    std::vector<PhantomNode>
-    IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
-                   const api::IsochroneParameters &parameters) const final override;
-
     const DataFacadeBase &GetFacade() const final override { return *facade; }
+
+    bool HasIsochroneSearch() const final override
+    {
+        return routing_algorithms::HasIsochroneSearch<Algorithm>::value;
+    }
 
     bool HasOptimizeRouteStrategy() const final override
     {
@@ -299,16 +297,6 @@ inline std::vector<routing_algorithms::TurnData> RoutingAlgorithms<Algorithm>::G
     const std::vector<std::size_t> &sorted_edge_indexes) const
 {
     return routing_algorithms::getTileTurns(*facade, edges, sorted_edge_indexes);
-}
-
-template <typename Algorithm>
-inline std::vector<PhantomNode> RoutingAlgorithms<Algorithm>::IsochroneNodes(std::vector<PhantomNode> &phantom_nodes,
-                                                                             const api::IsochroneParameters &parameters) const
-{
-    return routing_algorithms::isochroneNodes(heaps,
-                                              *facade,
-                                              phantom_nodes,
-                                              parameters);
 }
 
 } // namespace engine

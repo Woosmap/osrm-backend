@@ -33,8 +33,8 @@ struct IsochroneParametersGrammar final : public RouteParametersGrammar<Iterator
     {
 
         range_rule =
-            (qi::lit("range=") >
-             qi::uint_)[ph::bind(&engine::api::IsochroneParameters::range, qi::_r1) = qi::_1];
+            (qi::lit("max_weight=") >
+             qi::uint_)[ph::bind(&engine::api::IsochroneParameters::max_weight, qi::_r1) = qi::_1];
 
         convexity_rule = qi::lit("full")[qi::_val = 100] |
             qi::lit("smooth")[qi::_val = 75] |

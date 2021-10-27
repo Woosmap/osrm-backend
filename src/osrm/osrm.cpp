@@ -135,6 +135,14 @@ Status OSRM::Tile(const engine::api::TileParameters &params, engine::api::Result
     return engine_->Tile(params, result);
 }
 
+Status OSRM::Isochrone(const engine::api::IsochroneParameters &params, json::Object &json_result) const
+{
+    osrm::engine::api::ResultT result = json::Object();
+    auto status = engine_->Isochrone(params, result);
+    json_result = std::move(result.get<json::Object>());
+    return status;
+}
+
 Status OSRM::Isochrone(const engine::api::IsochroneParameters &params,
                                engine::api::ResultT &result) const
 {
