@@ -1,9 +1,14 @@
-# 5.26.0-WGS1
-  - Changes from 5.25.0
+# 5.27.0-WGS2
+- Changes from 5.27.0-WGS1
+    - WEB_API:
+        - ADDED: Added a new service for isochrone search, base on optimization by distance or time
+
+# 5.27.0-WGS1
+  - Changes from 5.26.0
     - Versioning :
         - Updated version numbering : usage of -WGSn (n:number) for internal modifications. Purpose being to remain compatible with initila versioning
     - Features:
-        - ADDED: Added support for distance optimization on route (map, trip) queries [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
+        - ADDED: Added support for distance optimization on route/map/trip queries [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - Misc:
         - FIXED: Changed type of duration variables from EdgeWeight to EdgeDuration  [#11](https://github.com/WebGeoServices/osrm-backend/pull/11)
     - Profile:

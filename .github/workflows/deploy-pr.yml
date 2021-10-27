@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      VERSION: 5.27.0-WGS1-pr_${{ github.event.pull_request.number }}
+      VERSION: 5.27.0-WGS2-pr_${{ github.event.pull_request.number }}
       BUILDKIT_INLINE_CACHE: 1
       DOCKER_BUILDKIT: 1
     steps:

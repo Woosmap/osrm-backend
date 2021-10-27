@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      VERSION: 5.27.0-WGS1
+      VERSION: 5.27.0-WGS2
       BUILDKIT_INLINE_CACHE: 1
       DOCKER_BUILDKIT: 1
     steps:
