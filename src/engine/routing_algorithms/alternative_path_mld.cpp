@@ -51,8 +51,8 @@ struct Parameters
     // Alternative paths are still reasonable around the via node candidate (local optimality).
     // At least optimal around 10% sub-paths around the via node candidate.
     double kAtLeastOptimalAroundViaBy = 0.1;
-    // Alternative paths similarity requirement (sharing) based on calles.
-    // At least 15% different than the shortest path.
+    // Alternative paths similarity requirement (sharing) based on cells.
+    // At least 5% different than the shortest path.
     double kCellsAtMostSameBy = 0.95;
 };
 
@@ -547,7 +547,9 @@ void unpackPackedPaths(InputIt first,
                        OutIt out,
                        SearchEngineData<Algorithm> &search_engine_data,
                        const Facade &facade,
-                       const PhantomNodes &phantom_node_pair)
+                       const PhantomNodes &phantom_node_pair,
+                       const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                       const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights)
 {
     util::static_assert_iter_category<InputIt, std::input_iterator_tag>();
     util::static_assert_iter_category<OutIt, std::output_iterator_tag>();
@@ -624,6 +626,8 @@ void unpackPackedPaths(InputIt first,
                                                                                 facade,
                                                                                 forward_heap,
                                                                                 reverse_heap,
+                                                                                to_node_weight,
+                                                                                cell_border_weights,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 DO_NOT_FORCE_LOOPS,
                                                                                 INVALID_EDGE_WEIGHT,
@@ -657,12 +661,18 @@ inline std::vector<WeightedViaNode>
 makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
                   const Facade &facade,
                   const PhantomNodes &phantom_node_pair,
+                  std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+                  osrm::engine::api::BaseParameters::OptimizeType optimize,
                   const Parameters &parameters)
 {
     Heap &forward_heap = *search_engine_data.forward_heap_1;
     Heap &reverse_heap = *search_engine_data.reverse_heap_1;
 
-    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair);
+    insertNodesInHeaps(forward_heap, reverse_heap, phantom_node_pair, phantom_weights);
+    if (forward_heap.Empty() || reverse_heap.Empty())
+    {
+        return {};
+    }
 
     // The single via node in the shortest paths s,via and via,t sub-paths and
     // the weight for the shortest path s,t we return and compare alternatives to.
@@ -706,6 +716,8 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
             routingStep<FORWARD_DIRECTION>(facade,
                                            forward_heap,
                                            reverse_heap,
+                                           getWeightStrategy(facade,optimize),
+                                           getCellWeightStrategy(facade,optimize),
                                            overlap_via,
                                            overlap_weight,
                                            DO_NOT_FORCE_LOOPS,
@@ -732,6 +744,8 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
             routingStep<REVERSE_DIRECTION>(facade,
                                            reverse_heap,
                                            forward_heap,
+                                           getWeightStrategy(facade,optimize),
+                                           getCellWeightStrategy(facade,optimize),
                                            overlap_via,
                                            overlap_weight,
                                            DO_NOT_FORCE_LOOPS,
@@ -773,6 +787,8 @@ makeCandidateVias(SearchEngineData<Algorithm> &search_engine_data,
 InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &search_engine_data,
                                                const Facade &facade,
                                                const PhantomNodes &phantom_node_pair,
+                                               std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+                                               osrm::engine::api::BaseParameters::OptimizeType optimize,
                                                unsigned number_of_alternatives)
 {
     Parameters parameters = parametersFromRequest(phantom_node_pair);
@@ -794,7 +810,7 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &sear
 
     // Do forward and backward search, save search space overlap as via candidates.
     auto candidate_vias =
-        makeCandidateVias(search_engine_data, facade, phantom_node_pair, parameters);
+        makeCandidateVias(search_engine_data, facade, phantom_node_pair, phantom_weights, optimize, parameters);
 
     const auto by_weight = [](const auto &lhs, const auto &rhs) { return lhs.weight < rhs.weight; };
     auto shortest_path_via_it =
@@ -896,7 +912,9 @@ InternalManyRoutesResult alternativePathSearch(SearchEngineData<Algorithm> &sear
                       std::back_inserter(unpacked_paths),
                       search_engine_data,
                       facade,
-                      phantom_node_pair);
+                      phantom_node_pair,
+                      getWeightStrategy(facade,optimize),
+                      getCellWeightStrategy(facade,optimize));
 
     //
     // Filter and rank a second time. This time instead of being fast and doing

@@ -55,7 +55,8 @@ bool IsSupportedParameterCombination(const bool fixed_start,
 InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &algorithms,
                                              const std::vector<PhantomNode> &snapped_phantoms,
                                              const std::vector<NodeID> &trip,
-                                             const bool roundtrip) const
+                                             const api::TripParameters &parameters,
+                                             std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights) const
 {
     InternalRouteResult min_route;
     // given the final trip, compute total duration and return the route and location permutation
@@ -72,7 +73,7 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
     }
 
     // return back to the first node if it is a round trip
-    if (roundtrip)
+    if (parameters.roundtrip)
     {
         viapoint = PhantomNodes{snapped_phantoms[trip.back()], snapped_phantoms[trip.front()]};
         min_route.segment_end_coordinates.emplace_back(viapoint);
@@ -85,7 +86,7 @@ InternalRouteResult TripPlugin::ComputeRoute(const RoutingAlgorithmsInterface &a
         BOOST_ASSERT(min_route.segment_end_coordinates.size() == trip.size() - 1);
     }
 
-    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, {false});
+    min_route = algorithms.ShortestPathSearch(min_route.segment_end_coordinates, phantom_weights, parameters.optimize, {false});
     BOOST_ASSERT_MSG(min_route.shortest_path_weight < INVALID_EDGE_WEIGHT, "unroutable route");
     return min_route;
 }
@@ -199,14 +200,14 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
     if (phantom_node_pairs.size() != number_of_locations)
     {
         return Error("NoSegment",
-                     std::string("Could not find a matching segment for coordinate ") +
-                         std::to_string(phantom_node_pairs.size()),
+                     MissingPhantomErrorMessage(phantom_node_pairs, parameters.coordinates),
                      result);
     }
     BOOST_ASSERT(phantom_node_pairs.size() == number_of_locations);
 
-    if (fixed_start && fixed_end && (source_id >= parameters.coordinates.size() ||
-                                     destination_id >= parameters.coordinates.size()))
+    if (fixed_start && fixed_end &&
+        (source_id >= parameters.coordinates.size() ||
+         destination_id >= parameters.coordinates.size()))
     {
         return Error("InvalidValue", "Invalid source or destination value.", result);
     }
@@ -215,70 +216,92 @@ Status TripPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     BOOST_ASSERT(snapped_phantoms.size() == number_of_locations);
 
+    auto phantom_weights = [&parameters](const PhantomNode &phantom, bool forward) {
+      switch( parameters.optimize) {
+      case osrm::engine::api::RouteParameters::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::RouteParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
+    auto many_to_may_weights = [&](const std::vector<PhantomNode> &snapped_phantoms,const bool use_distance) {
+        auto table_result = algorithms.ManyToManySearch(snapped_phantoms, {}, {}, use_distance, phantom_weights,parameters.optimize) ;
+        if( !use_distance ) return table_result.first ;
+
+        std::vector<EdgeWeight> tab_distance ;
+        std::transform( table_result.second.begin(), table_result.second.end(), std::back_inserter(tab_distance),
+                        [](EdgeDistance dist) -> EdgeWeight { return static_cast<EdgeWeight>(100*dist); });
+        return tab_distance ;
+    };
     // compute the duration table of all phantom nodes
-    auto result_duration_table = util::DistTableWrapper<EdgeWeight>(
-        algorithms.ManyToManySearch(snapped_phantoms, {}, {}, /*requestDistance*/ false).first,
+    auto result_optimize_table = util::DistTableWrapper<EdgeWeight>(
+        many_to_may_weights(snapped_phantoms, parameters.optimize == api::TripParameters::OptimizeType::Distance),
         number_of_locations);
 
-    if (result_duration_table.size() == 0)
+    if (result_optimize_table.size() == 0)
     {
         return Status::Error;
     }
 
     const constexpr std::size_t BF_MAX_FEASABLE = 10;
-    BOOST_ASSERT_MSG(result_duration_table.size() == number_of_locations * number_of_locations,
-                     "Distance Table has wrong size");
+    BOOST_ASSERT_MSG(result_optimize_table.size() == number_of_locations * number_of_locations,
+                     "Optimized Table has wrong size");
 
-    if (!IsStronglyConnectedComponent(result_duration_table))
+    if (!IsStronglyConnectedComponent(result_optimize_table))
     {
         return Error("NoTrips", "No trip visiting all destinations possible.", result);
     }
 
     if (fixed_start && fixed_end)
     {
-        ManipulateTableForFSE(source_id, destination_id, result_duration_table);
+        ManipulateTableForFSE(source_id, destination_id, result_optimize_table);
     }
 
-    std::vector<NodeID> duration_trip;
-    duration_trip.reserve(number_of_locations);
+    std::vector<NodeID> trip_nodes;
+    trip_nodes.reserve(number_of_locations);
     // get an optimized order in which the destinations should be visited
     if (number_of_locations < BF_MAX_FEASABLE)
     {
-        duration_trip = trip::BruteForceTrip(number_of_locations, result_duration_table);
+        trip_nodes = trip::BruteForceTrip(number_of_locations, result_optimize_table);
     }
     else
     {
-        duration_trip = trip::FarthestInsertionTrip(number_of_locations, result_duration_table);
+        trip_nodes = trip::FarthestInsertionTrip(number_of_locations, result_optimize_table);
     }
 
     // rotate result such that roundtrip starts at node with index 0
     // thist first if covers scenarios: !fixed_end || fixed_start || (fixed_start && fixed_end)
     if (!fixed_end || fixed_start)
     {
-        auto desired_start_index = std::find(std::begin(duration_trip), std::end(duration_trip), 0);
-        BOOST_ASSERT(desired_start_index != std::end(duration_trip));
-        std::rotate(std::begin(duration_trip), desired_start_index, std::end(duration_trip));
+        auto desired_start_index = std::find(std::begin(trip_nodes), std::end(trip_nodes), 0);
+        BOOST_ASSERT(desired_start_index != std::end(trip_nodes));
+        std::rotate(std::begin(trip_nodes), desired_start_index, std::end(trip_nodes));
     }
     else if (fixed_end && !fixed_start && parameters.roundtrip)
     {
         auto desired_start_index =
-            std::find(std::begin(duration_trip), std::end(duration_trip), destination_id);
-        BOOST_ASSERT(desired_start_index != std::end(duration_trip));
-        std::rotate(std::begin(duration_trip), desired_start_index, std::end(duration_trip));
+            std::find(std::begin(trip_nodes), std::end(trip_nodes), destination_id);
+        BOOST_ASSERT(desired_start_index != std::end(trip_nodes));
+        std::rotate(std::begin(trip_nodes), desired_start_index, std::end(trip_nodes));
     }
 
     // get the route when visiting all destinations in optimized order
     InternalRouteResult route =
-        ComputeRoute(algorithms, snapped_phantoms, duration_trip, parameters.roundtrip);
+        ComputeRoute(algorithms, snapped_phantoms, trip_nodes, parameters, phantom_weights);
 
     // get api response
-    const std::vector<std::vector<NodeID>> trips = {duration_trip};
+    const std::vector<std::vector<NodeID>> trips = {trip_nodes};
     const std::vector<InternalRouteResult> routes = {route};
     api::TripAPI trip_api{facade, parameters};
     trip_api.MakeResponse(trips, routes, snapped_phantoms, result);
 
     return Status::Ok;
 }
-}
-}
-}
+} // namespace plugins
+} // namespace engine
+} // namespace osrm

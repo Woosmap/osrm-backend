@@ -101,6 +101,10 @@ class Server
                 new_connection->socket(),
                 boost::bind(&Server::HandleAccept, this, boost::asio::placeholders::error));
         }
+        else
+        {
+            util::Log(logERROR) << "HandleAccept error: " << e.message();
+        }
     }
 
     unsigned thread_pool_size;
@@ -109,7 +113,7 @@ class Server
     std::shared_ptr<Connection> new_connection;
     RequestHandler request_handler;
 };
-}
-}
+} // namespace server
+} // namespace osrm
 
 #endif // SERVER_HPP

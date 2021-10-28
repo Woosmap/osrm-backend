@@ -1,11 +1,13 @@
 #include "util/exception.hpp"
 #include "util/geojson_validation.hpp"
+#include "util/timezones.hpp"
 
 #include <boost/test/unit_test.hpp>
 
 BOOST_AUTO_TEST_SUITE(geojson_validation)
 
 using namespace osrm;
+using namespace osrm::updater;
 
 BOOST_AUTO_TEST_CASE(timezone_coordinate_validation_test)
 {
@@ -65,21 +67,24 @@ BOOST_AUTO_TEST_CASE(timezone_validation_test)
     doc.Parse(nonobj_props);
     BOOST_CHECK_THROW(util::validateFeature(doc), util::exception);
 
-    char missing_tzid[] = "{ \"type\" : \"Feature\","
+    //  Timezone checks moved on commit #564a29141
+    std::time_t now = time(0);
+    char missing_tzid[] = "{ \"type\" : \"FeatureCollection\", \"features\": ["
+                          "{ \"type\" : \"Feature\","
                           "\"properties\" : { }, \"geometry\" : { \"type\": \"polygon\", "
                           "\"coordinates\": [[[8.28369,48.88277], [8.57757, "
                           "48.88277], [8.57757, 49.07206], [8.28369, "
-                          "49.07206], [8.28369, 48.88277]]] }}";
-    doc.Parse(missing_tzid);
-    BOOST_CHECK_THROW(util::validateFeature(doc), util::exception);
+                          "49.07206], [8.28369, 48.88277]]] }} ]}";
+    BOOST_CHECK_THROW(Timezoner tz(missing_tzid, now), util::exception);
 
-    char tzid_err[] = "{ \"type\" : \"Feature\","
-                      "\"properties\" : { \"TZID\" : []}, \"geometry\" : { \"type\": \"polygon\", "
-                      "\"coordinates\": [[[8.28369,48.88277], [8.57757, "
-                      "48.88277], [8.57757, 49.07206], [8.28369, "
-                      "49.07206], [8.28369, 48.88277]]] }}";
-    doc.Parse(tzid_err);
-    BOOST_CHECK_THROW(util::validateFeature(doc), util::exception);
+    char tzid_err[] =
+        "{ \"type\" : \"FeatureCollection\", \"features\": ["
+        "{ \"type\" : \"Feature\","
+        "\"properties\" : { \"tzid\" : []}, \"geometry\" : { \"type\": \"polygon\", "
+        "\"coordinates\": [[[8.28369,48.88277], [8.57757, "
+        "48.88277], [8.57757, 49.07206], [8.28369, "
+        "49.07206], [8.28369, 48.88277]]] }} ]}";
+    BOOST_CHECK_THROW(Timezoner tz(tzid_err, now), util::exception);
 
     char missing_geom[] = "{ \"type\" : \"Feature\","
                           "\"properties\" : { \"TZID\" : \"Europe/Berlin\"}, \"geometries\" : { "

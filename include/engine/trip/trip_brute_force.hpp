@@ -36,7 +36,7 @@ inline EdgeWeight ReturnDistance(const util::DistTableWrapper<EdgeWeight> &dist_
         std::size_t next_index = (current_index + 1) % number_of_locations;
         auto edge_weight = dist_table(location_order[current_index], location_order[next_index]);
 
-        // If the edge_weight is very large (INVALID_EDGE_WEIGHT) then the algorithm will not choose
+        // If the to_node_weight is very large (INVALID_EDGE_WEIGHT) then the algorithm will not choose
         // this edge in final minimal path. So instead of computing all the permutations after this
         // large edge, discard this edge right here and don't consider the path after this edge.
         if (edge_weight == INVALID_EDGE_WEIGHT)

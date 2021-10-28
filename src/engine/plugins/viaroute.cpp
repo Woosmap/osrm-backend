@@ -90,8 +90,7 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     if (phantom_node_pairs.size() != route_parameters.coordinates.size())
     {
         return Error("NoSegment",
-                     std::string("Could not find a matching segment for coordinate ") +
-                         std::to_string(phantom_node_pairs.size()),
+                     MissingPhantomErrorMessage(phantom_node_pairs, route_parameters.coordinates),
                      result);
     }
     BOOST_ASSERT(phantom_node_pairs.size() == route_parameters.coordinates.size());
@@ -108,6 +107,19 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     api::RouteAPI route_api{facade, route_parameters};
 
     InternalManyRoutesResult routes;
+    auto phantom_weights = [&route_parameters](const PhantomNode &phantom, bool forward) {
+      switch( route_parameters.optimize) {
+      case osrm::engine::api::BaseParameters::OptimizeType::Distance :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+          //break ;
+      case osrm::engine::api::BaseParameters::OptimizeType::Time :
+          return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+          //break ;
+      default :
+          return PhantomNode::phantomWeights(phantom,forward);
+          //break ;
+      }
+    };
 
     // TODO: in v6 we should remove the boolean and only keep the number parameter.
     // For now just force them to be in sync. and keep backwards compatibility.
@@ -121,15 +133,15 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
     // https://github.com/Project-OSRM/osrm-backend/issues/3905
     if (1 == start_end_nodes.size() && algorithms.HasAlternativePathSearch() && wants_alternatives)
     {
-        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), number_of_alternatives);
+        routes = algorithms.AlternativePathSearch(start_end_nodes.front(), phantom_weights, route_parameters.optimize, number_of_alternatives);
     }
     else if (1 == start_end_nodes.size() && algorithms.HasDirectShortestPathSearch())
     {
-        routes = algorithms.DirectShortestPathSearch(start_end_nodes.front());
+        routes = algorithms.DirectShortestPathSearch(start_end_nodes.front(), phantom_weights, route_parameters.optimize);
     }
     else
     {
-        routes = algorithms.ShortestPathSearch(start_end_nodes, route_parameters.continue_straight);
+        routes = algorithms.ShortestPathSearch(start_end_nodes, phantom_weights, route_parameters.optimize, route_parameters.continue_straight);
     }
 
     // The post condition for all path searches is we have at least one route in our result.
@@ -184,6 +196,6 @@ Status ViaRoutePlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithm
 
     return Status::Ok;
 }
-}
-}
-}
+} // namespace plugins
+} // namespace engine
+} // namespace osrm

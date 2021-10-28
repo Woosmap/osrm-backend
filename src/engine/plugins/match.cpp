@@ -207,7 +207,6 @@ Status MatchPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
                            {
                                return routing_algorithms::DEFAULT_GPS_PRECISION * RADIUS_MULTIPLIER;
                            }
-
                        });
     }
 
@@ -282,11 +281,24 @@ Status MatchPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
             BOOST_ASSERT(current_phantom_node_pair.target_phantom.IsValid());
             sub_routes[index].segment_end_coordinates.emplace_back(current_phantom_node_pair);
         }
+        auto phantom_weights = [&parameters](const PhantomNode &phantom, bool forward) {
+          switch( parameters.optimize) {
+          case osrm::engine::api::RouteParameters::OptimizeType::Distance :
+              return static_cast<EdgeWeight>( forward ? phantom.GetForwardDistance() : phantom.GetReverseDistance() );
+              //break ;
+          case osrm::engine::api::RouteParameters::OptimizeType::Time :
+              return static_cast<EdgeWeight>( forward ? phantom.GetForwardDuration() : phantom.GetReverseDuration() );
+              //break ;
+          default :
+              return PhantomNode::phantomWeights(phantom,forward);
+              //break ;
+          }
+        };
         // force uturns to be on
         // we split the phantom nodes anyway and only have bi-directional phantom nodes for
         // possible uturns
         sub_routes[index] =
-            algorithms.ShortestPathSearch(sub_routes[index].segment_end_coordinates, {false});
+            algorithms.ShortestPathSearch(sub_routes[index].segment_end_coordinates, phantom_weights, parameters.optimize, {false});
         BOOST_ASSERT(sub_routes[index].shortest_path_weight != INVALID_EDGE_WEIGHT);
         if (collapse_legs)
         {
@@ -314,6 +326,6 @@ Status MatchPlugin::HandleRequest(const RoutingAlgorithmsInterface &algorithms,
 
     return Status::Ok;
 }
-}
-}
-}
+} // namespace plugins
+} // namespace engine
+} // namespace osrm

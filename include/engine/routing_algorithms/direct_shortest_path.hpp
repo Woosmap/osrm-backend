@@ -24,7 +24,9 @@ namespace routing_algorithms
 template <typename Algorithm>
 InternalRouteResult directShortestPathSearch(SearchEngineData<Algorithm> &engine_working_data,
                                              const DataFacade<Algorithm> &facade,
-                                             const PhantomNodes &phantom_nodes);
+                                             const PhantomNodes &phantom_nodes,
+                                             std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights,
+                                             osrm::engine::api::BaseParameters::OptimizeType optimize);
 
 } // namespace routing_algorithms
 } // namespace engine

@@ -1,6 +1,8 @@
 #ifndef OSRM_ENGINE_ROUTING_BASE_CH_HPP
 #define OSRM_ENGINE_ROUTING_BASE_CH_HPP
 
+
+#include "engine/api/base_parameters.hpp"
 #include "engine/algorithm.hpp"
 #include "engine/datafacade.hpp"
 #include "engine/routing_algorithms/routing_base.hpp"
@@ -24,11 +26,10 @@ namespace ch
 // Stalling
 template <bool DIRECTION, typename HeapT>
 bool stallAtNode(const DataFacade<Algorithm> &facade,
-                 const NodeID node,
-                 const EdgeWeight weight,
+                 const typename HeapT::HeapNode &heapNode,
                  const HeapT &query_heap)
 {
-    for (auto edge : facade.GetAdjacentEdgeRange(node))
+    for (auto edge : facade.GetAdjacentEdgeRange(heapNode.node))
     {
         const auto &data = facade.GetEdgeData(edge);
         if (DIRECTION == REVERSE_DIRECTION ? data.forward : data.backward)
@@ -36,9 +37,10 @@ bool stallAtNode(const DataFacade<Algorithm> &facade,
             const NodeID to = facade.GetTarget(edge);
             const EdgeWeight edge_weight = data.weight;
             BOOST_ASSERT_MSG(edge_weight > 0, "edge_weight invalid");
-            if (query_heap.WasInserted(to))
+            const auto toHeapNode = query_heap.GetHeapNodeIfWasInserted(to);
+            if (toHeapNode)
             {
-                if (query_heap.GetKey(to) + edge_weight < weight)
+                if (toHeapNode->weight + edge_weight < heapNode.weight)
                 {
                     return true;
                 }
@@ -50,11 +52,10 @@ bool stallAtNode(const DataFacade<Algorithm> &facade,
 
 template <bool DIRECTION>
 void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
-                        const NodeID node,
-                        const EdgeWeight weight,
+                        const SearchEngineData<Algorithm>::QueryHeap::HeapNode &heapNode,
                         SearchEngineData<Algorithm>::QueryHeap &heap)
 {
-    for (const auto edge : facade.GetAdjacentEdgeRange(node))
+    for (const auto edge : facade.GetAdjacentEdgeRange(heapNode.node))
     {
         const auto &data = facade.GetEdgeData(edge);
         if (DIRECTION == FORWARD_DIRECTION ? data.forward : data.backward)
@@ -63,19 +64,21 @@ void relaxOutgoingEdges(const DataFacade<Algorithm> &facade,
             const EdgeWeight edge_weight = data.weight;
 
             BOOST_ASSERT_MSG(edge_weight > 0, "edge_weight invalid");
-            const EdgeWeight to_weight = weight + edge_weight;
+            const EdgeWeight to_weight = heapNode.weight + edge_weight;
 
+            const auto toHeapNode = heap.GetHeapNodeIfWasInserted(to);
             // New Node discovered -> Add to Heap + Node Info Storage
-            if (!heap.WasInserted(to))
+            if (!toHeapNode)
             {
-                heap.Insert(to, to_weight, node);
+                heap.Insert(to, to_weight, heapNode.node);
             }
             // Found a shorter Path -> Update weight
-            else if (to_weight < heap.GetKey(to))
+            else if (to_weight < toHeapNode->weight)
             {
                 // new parent
-                heap.GetData(to).parent = node;
-                heap.DecreaseKey(to, to_weight);
+                toHeapNode->data.parent = heapNode.node;
+                toHeapNode->weight = to_weight;
+                heap.DecreaseKey(*toHeapNode);
             }
         }
     }
@@ -122,35 +125,35 @@ void routingStep(const DataFacade<Algorithm> &facade,
                  const bool force_loop_forward,
                  const bool force_loop_reverse)
 {
-    const NodeID node = forward_heap.DeleteMin();
-    const EdgeWeight weight = forward_heap.GetKey(node);
+    auto heapNode = forward_heap.DeleteMinGetHeapNode();
+    const auto reverseHeapNode = reverse_heap.GetHeapNodeIfWasInserted(heapNode.node);
 
-    if (reverse_heap.WasInserted(node))
+    if (reverseHeapNode)
     {
-        const EdgeWeight new_weight = reverse_heap.GetKey(node) + weight;
+        const EdgeWeight new_weight = reverseHeapNode->weight + heapNode.weight;
         if (new_weight < upper_bound)
         {
             // if loops are forced, they are so at the source
-            if ((force_loop_forward && forward_heap.GetData(node).parent == node) ||
-                (force_loop_reverse && reverse_heap.GetData(node).parent == node) ||
+            if ((force_loop_forward && heapNode.data.parent == heapNode.node) ||
+                (force_loop_reverse && reverseHeapNode->data.parent == heapNode.node) ||
                 // in this case we are looking at a bi-directional way where the source
                 // and target phantom are on the same edge based node
                 new_weight < 0)
             {
                 // check whether there is a loop present at the node
-                for (const auto edge : facade.GetAdjacentEdgeRange(node))
+                for (const auto edge : facade.GetAdjacentEdgeRange(heapNode.node))
                 {
                     const auto &data = facade.GetEdgeData(edge);
                     if (DIRECTION == FORWARD_DIRECTION ? data.forward : data.backward)
                     {
                         const NodeID to = facade.GetTarget(edge);
-                        if (to == node)
+                        if (to == heapNode.node)
                         {
                             const EdgeWeight edge_weight = data.weight;
                             const EdgeWeight loop_weight = new_weight + edge_weight;
                             if (loop_weight >= 0 && loop_weight < upper_bound)
                             {
-                                middle_node_id = node;
+                                middle_node_id = heapNode.node;
                                 upper_bound = loop_weight;
                             }
                         }
@@ -161,7 +164,7 @@ void routingStep(const DataFacade<Algorithm> &facade,
             {
                 BOOST_ASSERT(new_weight >= 0);
 
-                middle_node_id = node;
+                middle_node_id = heapNode.node;
                 upper_bound = new_weight;
             }
         }
@@ -170,19 +173,19 @@ void routingStep(const DataFacade<Algorithm> &facade,
     // make sure we don't terminate too early if we initialize the weight
     // for the nodes in the forward heap with the forward/reverse offset
     BOOST_ASSERT(min_edge_offset <= 0);
-    if (weight + min_edge_offset > upper_bound)
+    if (heapNode.weight + min_edge_offset > upper_bound)
     {
         forward_heap.DeleteAll();
         return;
     }
 
     // Stalling
-    if (STALLING && stallAtNode<DIRECTION>(facade, node, weight, forward_heap))
+    if (STALLING && stallAtNode<DIRECTION>(facade, heapNode, forward_heap))
     {
         return;
     }
 
-    relaxOutgoingEdges<DIRECTION>(facade, node, weight, forward_heap);
+    relaxOutgoingEdges<DIRECTION>(facade, heapNode, forward_heap);
 }
 
 template <bool UseDuration>
@@ -450,6 +453,27 @@ void retrievePackedPathFromSingleManyToManyHeap(
     const NodeID middle_node_id,
     std::vector<NodeID> &packed_path);
 
+template <typename Algorithm>
+inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
+getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
+
+    auto nodeWeight = [](const EdgeID /*id*/, const EdgeID /*turnId*/) {
+        return static_cast<EdgeWeight>(0);
+    };
+    return nodeWeight;
+}
+
+template <typename Algorithm>
+inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+getCellWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
+{
+    std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+        GetWeights = [](bool /*out*/) -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+            return [](NodeID, LevelID) { return std::vector<EdgeWeight>();};
+      };
+      return GetWeights;
+}
+
 // assumes that heaps are already setup correctly.
 // ATTENTION: This only works if no additional offset is supplied next to the Phantom Node
 // Offsets.
@@ -466,6 +490,8 @@ void search(SearchEngineData<Algorithm> &engine_working_data,
             const DataFacade<Algorithm> &facade,
             SearchEngineData<Algorithm>::QueryHeap &forward_heap,
             SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
+            const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+            const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
             std::int32_t &weight,
             std::vector<NodeID> &packed_leg,
             const bool force_loop_forward,

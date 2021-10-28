@@ -45,20 +45,22 @@ bool needsLoopForward(const PhantomNodes &phantoms);
 bool needsLoopBackwards(const PhantomNodes &phantoms);
 
 template <typename Heap>
-void insertNodesInHeaps(Heap &forward_heap, Heap &reverse_heap, const PhantomNodes &nodes)
+void insertNodesInHeaps(Heap &forward_heap, Heap &reverse_heap, const PhantomNodes &nodes,
+                        std::function<EdgeWeight(const PhantomNode &, bool)> phantom_weights=PhantomNode::phantomWeights)
+
 {
     const auto &source = nodes.source_phantom;
     if (source.IsValidForwardSource())
     {
         forward_heap.Insert(source.forward_segment_id.id,
-                            -source.GetForwardWeightPlusOffset(),
+                            -phantom_weights(source,true), //source.GetForwardWeightPlusOffset(),
                             source.forward_segment_id.id);
     }
 
     if (source.IsValidReverseSource())
     {
         forward_heap.Insert(source.reverse_segment_id.id,
-                            -source.GetReverseWeightPlusOffset(),
+                            -phantom_weights(source,false), //source.GetReverseWeightPlusOffset(),
                             source.reverse_segment_id.id);
     }
 
@@ -66,25 +68,25 @@ void insertNodesInHeaps(Heap &forward_heap, Heap &reverse_heap, const PhantomNod
     if (target.IsValidForwardTarget())
     {
         reverse_heap.Insert(target.forward_segment_id.id,
-                            target.GetForwardWeightPlusOffset(),
+                            phantom_weights(target,true), //target.GetForwardWeightPlusOffset(),
                             target.forward_segment_id.id);
     }
 
     if (target.IsValidReverseTarget())
     {
         reverse_heap.Insert(target.reverse_segment_id.id,
-                            target.GetReverseWeightPlusOffset(),
+                            phantom_weights(target,false), //target.GetReverseWeightPlusOffset(),
                             target.reverse_segment_id.id);
     }
 }
 
 template <typename ManyToManyQueryHeap>
-void insertSourceInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_node)
+void insertSourceInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_node, std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights)
 {
     if (phantom_node.IsValidForwardSource())
     {
         heap.Insert(phantom_node.forward_segment_id.id,
-                    -phantom_node.GetForwardWeightPlusOffset(),
+                    -phantom_weights(phantom_node,true), //phantom_node.GetForwardWeightPlusOffset(),
                     {phantom_node.forward_segment_id.id,
                      -phantom_node.GetForwardDuration(),
                      -phantom_node.GetForwardDistance()});
@@ -92,7 +94,7 @@ void insertSourceInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_no
     if (phantom_node.IsValidReverseSource())
     {
         heap.Insert(phantom_node.reverse_segment_id.id,
-                    -phantom_node.GetReverseWeightPlusOffset(),
+                    -phantom_weights(phantom_node,false), //phantom_node.GetReverseWeightPlusOffset(),
                     {phantom_node.reverse_segment_id.id,
                      -phantom_node.GetReverseDuration(),
                      -phantom_node.GetReverseDistance()});
@@ -100,12 +102,12 @@ void insertSourceInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_no
 }
 
 template <typename ManyToManyQueryHeap>
-void insertTargetInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_node)
+void insertTargetInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_node, std::function<EdgeWeight(const PhantomNode&,bool)> phantom_weights)
 {
     if (phantom_node.IsValidForwardTarget())
     {
         heap.Insert(phantom_node.forward_segment_id.id,
-                    phantom_node.GetForwardWeightPlusOffset(),
+                    phantom_weights(phantom_node,true), //phantom_node.GetForwardWeightPlusOffset(),
                     {phantom_node.forward_segment_id.id,
                      phantom_node.GetForwardDuration(),
                      phantom_node.GetForwardDistance()});
@@ -113,7 +115,7 @@ void insertTargetInHeap(ManyToManyQueryHeap &heap, const PhantomNode &phantom_no
     if (phantom_node.IsValidReverseTarget())
     {
         heap.Insert(phantom_node.reverse_segment_id.id,
-                    phantom_node.GetReverseWeightPlusOffset(),
+                    phantom_weights(phantom_node,false), //phantom_node.GetReverseWeightPlusOffset(),
                     {phantom_node.reverse_segment_id.id,
                      phantom_node.GetReverseDuration(),
                      phantom_node.GetReverseDistance()});
@@ -192,17 +194,22 @@ void annotatePath(const FacadeT &facade,
 
         const bool is_first_segment = unpacked_path.empty();
 
-        const std::size_t start_index =
-            (is_first_segment ? ((start_traversed_in_reverse)
-                                     ? weight_vector.size() -
-                                           phantom_node_pair.source_phantom.fwd_segment_position - 1
-                                     : phantom_node_pair.source_phantom.fwd_segment_position)
-                              : 0);
+        std::size_t start_index = 0;
+        if (is_first_segment)
+        {
+            unsigned short segment_position = phantom_node_pair.source_phantom.fwd_segment_position;
+            if (start_traversed_in_reverse)
+            {
+                segment_position = weight_vector.size() -
+                                   phantom_node_pair.source_phantom.fwd_segment_position - 1;
+            }
+            BOOST_ASSERT(segment_position >= 0);
+            start_index = static_cast<std::size_t>(segment_position);
+        }
         const std::size_t end_index = weight_vector.size();
 
         bool is_left_hand_driving = facade.IsLeftHandDriving(node_id);
 
-        BOOST_ASSERT(start_index >= 0);
         BOOST_ASSERT(start_index < end_index);
         for (std::size_t segment_idx = start_index; segment_idx < end_index; ++segment_idx)
         {

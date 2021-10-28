@@ -18,9 +18,9 @@ namespace offline
 struct Algorithm final
 {
 };
-}
+} // namespace offline
 
-} // routing_algorithms
+} // namespace routing_algorithms
 
 // Define engine data for offline data facade
 template <> struct SearchEngineData<routing_algorithms::offline::Algorithm>
@@ -386,7 +386,7 @@ class ContiguousInternalMemoryDataFacade<routing_algorithms::offline::Algorithm>
     }
 };
 
-} // datafacade
+} // namespace datafacade
 
 // Fallback to MLD algorithm: requires from data facade MLD specific members
 namespace routing_algorithms
@@ -398,6 +398,8 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                    const datafacade::ContiguousInternalMemoryDataFacade<Algorithm> &facade,
                    typename SearchEngineData<Algorithm>::QueryHeap &forward_heap,
                    typename SearchEngineData<Algorithm>::QueryHeap &reverse_heap,
+                   const std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>& to_node_weight,
+                   const std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>& cell_border_weights,
                    EdgeWeight &weight,
                    std::vector<NodeID> &packed_leg,
                    const bool force_loop_forward,
@@ -409,6 +411,8 @@ inline void search(SearchEngineData<Algorithm> &engine_working_data,
                 facade,
                 forward_heap,
                 reverse_heap,
+                to_node_weight,
+                cell_border_weights,
                 weight,
                 packed_leg,
                 force_loop_forward,
@@ -427,11 +431,31 @@ void unpackPath(const FacadeT &facade,
     mld::unpackPath(facade, packed_path_begin, packed_path_end, phantom_nodes, unpacked_path);
 }
 
-} // offline
-} // routing_algorithms
+template <typename Algorithm>
+inline std::function<EdgeWeight(const EdgeID id, const EdgeID turnId)>
+getWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/) {
 
-} // engine
-} // osrm
+    auto nodeWeight = [](const EdgeID /*id*/, const EdgeID /*turnId*/) {
+      return static_cast<EdgeWeight>(0);
+    };
+    return nodeWeight;
+}
+
+template <typename Algorithm>
+inline std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+getCellWeightStrategy( const DataFacade<Algorithm> &/*facade*/, osrm::engine::api::BaseParameters::OptimizeType /*optimize*/)
+{
+    std::function<std::function<std::vector<EdgeWeight>(NodeID, LevelID)>(bool)>
+        GetWeights = [](bool /*out*/) -> std::function<std::vector<EdgeWeight>(NodeID node, LevelID level)> {
+      return [](NodeID, LevelID) { return std::vector<EdgeWeight>();};
+    };
+    return GetWeights;
+}
+} // namespace offline
+} // namespace routing_algorithms
+
+} // namespace engine
+} // namespace osrm
 
 BOOST_AUTO_TEST_SUITE(offline_facade)
 
@@ -446,7 +470,7 @@ BOOST_AUTO_TEST_CASE(shortest_path)
     phantom_nodes.push_back({osrm::engine::PhantomNode{}, osrm::engine::PhantomNode{}});
 
     auto route =
-        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, false);
+        osrm::engine::routing_algorithms::shortestPathSearch(heaps, facade, phantom_nodes, osrm::engine::PhantomNode::phantomWeights, osrm::engine::api::BaseParameters::OptimizeType::Weight,false);
 
     BOOST_CHECK_EQUAL(route.shortest_path_weight, INVALID_EDGE_WEIGHT);
 }

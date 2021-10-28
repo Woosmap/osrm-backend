@@ -50,7 +50,7 @@ struct QueryEdge
         NodeID turn_id : 31;
         bool shortcut : 1;
         EdgeWeight weight;
-        EdgeWeight duration : 30;
+        EdgeDuration duration : 30;
         std::uint32_t forward : 1;
         std::uint32_t backward : 1;
         EdgeDistance distance;
@@ -77,7 +77,7 @@ struct QueryEdge
                 data.distance == right.data.distance);
     }
 };
-}
-}
+} // namespace contractor
+} // namespace osrm
 
 #endif // QUERYEDGE_HPP
